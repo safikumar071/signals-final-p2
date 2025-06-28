@@ -3,7 +3,6 @@ import { TrendingUp, Wallet, ChartBar as BarChart3, User, PhoneIncoming as HomeI
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { StyleSheet, TouchableOpacity } from 'react-native';
-import { Text } from 'react-native-svg';
 import { useState } from 'react';
 import NotificationSheet from '@/components/NotificationSheet';
 import SetupGuide from '@/components/SetupGuide';
