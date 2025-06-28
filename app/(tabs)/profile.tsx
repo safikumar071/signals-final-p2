@@ -11,13 +11,14 @@ import {
   Platform,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Bell, Shield, CircleHelp as HelpCircle, Settings, LogOut, ChevronRight, Award, Target, TrendingUp, Share2, Moon, Sun, Type, Globe, Calendar, CreditCard as Edit3, Check, X } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp as HelpCircle, Settings, LogOut, ChevronRight, Award, Target, TrendingUp, Share2, Moon, Sun, Type, Globe, Calendar, CreditCard as Edit3, Check, X, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import NotificationTestPanel from '../../components/NotificationTestPanel';
 import BackendMonitor from '../../components/BackendMonitor';
-import { loadUserProfile, updateUserProfile, LANGUAGE_OPTIONS, UserProfile } from '../../lib/deviceProfile';
+import { loadUserProfile, updateUserProfile, LANGUAGE_OPTIONS, UserProfile, getCurrentDeviceId } from '../../lib/deviceProfile';
 
 export default function ProfileScreen() {
   const { colors, fontSizes, theme, setTheme, fontSize, setFontSize } = useTheme();
@@ -29,6 +30,8 @@ export default function ProfileScreen() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editData, setEditData] = useState({ name: '', dob: '', language: '' });
   const [loading, setLoading] = useState(true);
+  const [deviceId, setDeviceId] = useState<string>('');
+  const [updating, setUpdating] = useState(false);
 
   const userStats = {
     memberSince: 'January 2024',
@@ -41,12 +44,26 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadProfile();
+    loadDeviceInfo();
   }, []);
+
+  const loadDeviceInfo = async () => {
+    try {
+      const id = await getCurrentDeviceId();
+      setDeviceId(id);
+    } catch (error) {
+      console.error('Error loading device info:', error);
+    }
+  };
 
   const loadProfile = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Loading user profile...');
+      
       const profile = await loadUserProfile();
+      console.log('📋 Profile loaded:', profile ? 'Found' : 'Not found');
+      
       setUserProfile(profile);
       if (profile) {
         setEditData({
@@ -54,9 +71,22 @@ export default function ProfileScreen() {
           dob: profile.dob || '',
           language: profile.language || 'en',
         });
+        console.log('✅ Profile data set:', {
+          name: profile.name,
+          language: profile.language,
+          onboarding_completed: profile.onboarding_completed
+        });
+      } else {
+        console.log('⚠️ No profile found, using defaults');
+        setEditData({
+          name: '',
+          dob: '',
+          language: 'en',
+        });
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
+      console.error('❌ Error loading user profile:', error);
+      Alert.alert('Error', 'Failed to load profile data');
     } finally {
       setLoading(false);
     }
@@ -69,6 +99,9 @@ export default function ProfileScreen() {
     }
 
     try {
+      setUpdating(true);
+      console.log('🔄 Updating profile with:', editData);
+      
       const result = await updateUserProfile({
         name: editData.name,
         dob: editData.dob,
@@ -76,27 +109,34 @@ export default function ProfileScreen() {
       });
 
       if (result.success) {
-        await loadProfile();
+        await loadProfile(); // Reload to get updated data
         setShowEditProfile(false);
         Alert.alert('Success', 'Profile updated successfully');
       } else {
         Alert.alert('Error', result.error || 'Failed to update profile');
       }
     } catch (error) {
+      console.error('❌ Error updating profile:', error);
       Alert.alert('Error', 'Something went wrong');
+    } finally {
+      setUpdating(false);
     }
   };
 
   const handleLanguageUpdate = async (languageCode: string) => {
     try {
+      console.log('🌍 Updating language to:', languageCode);
+      
       const result = await updateUserProfile({ language: languageCode });
       if (result.success) {
         await loadProfile();
         setShowLanguagePicker(false);
+        Alert.alert('Success', 'Language updated successfully');
       } else {
         Alert.alert('Error', result.error || 'Failed to update language');
       }
     } catch (error) {
+      console.error('❌ Error updating language:', error);
       Alert.alert('Error', 'Failed to update language');
     }
   };
@@ -198,6 +238,7 @@ export default function ProfileScreen() {
       color: colors.text,
       fontSize: fontSizes.medium,
       fontFamily: 'Inter-Medium',
+      marginTop: 16,
     },
     profileHeader: {
       alignItems: 'center',
@@ -256,6 +297,13 @@ export default function ProfileScreen() {
       fontSize: fontSizes.medium,
       color: colors.textSecondary,
       fontFamily: 'Inter-Regular',
+    },
+    deviceInfo: {
+      fontSize: fontSizes.small,
+      color: colors.textSecondary,
+      fontFamily: 'Inter-Regular',
+      marginTop: 4,
+      textAlign: 'center',
     },
     editButton: {
       flexDirection: 'row',
@@ -542,6 +590,10 @@ export default function ProfileScreen() {
       color: colors.text,
       fontFamily: 'Inter-Regular',
     },
+    inputDisabled: {
+      backgroundColor: colors.border,
+      color: colors.textSecondary,
+    },
     buttonRow: {
       flexDirection: 'row',
       gap: 12,
@@ -552,6 +604,9 @@ export default function ProfileScreen() {
       paddingVertical: 12,
       borderRadius: 8,
       alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      gap: 8,
     },
     primaryButton: {
       backgroundColor: colors.primary,
@@ -572,12 +627,27 @@ export default function ProfileScreen() {
     secondaryButtonText: {
       color: colors.text,
     },
+    noProfileCard: {
+      backgroundColor: `${colors.warning}15`,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: `${colors.warning}30`,
+    },
+    noProfileText: {
+      fontSize: fontSizes.medium,
+      color: colors.warning,
+      fontFamily: 'Inter-Medium',
+      textAlign: 'center',
+    },
   });
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
@@ -603,6 +673,11 @@ export default function ProfileScreen() {
             </Text>
             <Text style={styles.userRank}>{userStats.rank}</Text>
             <Text style={styles.memberSince}>Member since {userStats.memberSince}</Text>
+            {deviceId && (
+              <Text style={styles.deviceInfo}>
+                Device: {deviceId.substring(0, 20)}...
+              </Text>
+            )}
             <TouchableOpacity
               style={styles.editButton}
               onPress={() => setShowEditProfile(true)}
@@ -612,6 +687,15 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Show warning if no profile found */}
+        {!userProfile && (
+          <View style={styles.noProfileCard}>
+            <Text style={styles.noProfileText}>
+              No profile data found. Please complete onboarding or edit your profile.
+            </Text>
+          </View>
+        )}
 
         {/* Stats Grid */}
         <View style={styles.statsContainer}>
@@ -871,20 +955,36 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Date of Birth</Text>
+                <Text style={styles.label}>Date of Birth (Read-only)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, styles.inputDisabled]}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={colors.textSecondary}
                   value={editData.dob}
-                  onChangeText={(text) => setEditData(prev => ({ ...prev, dob: text }))}
+                  editable={false}
                 />
+                <Text style={styles.deviceInfo}>
+                  Date of birth cannot be changed for security reasons
+                </Text>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Device ID (Read-only)</Text>
+                <TextInput
+                  style={[styles.input, styles.inputDisabled]}
+                  value={deviceId}
+                  editable={false}
+                />
+                <Text style={styles.deviceInfo}>
+                  Your unique device identifier
+                </Text>
               </View>
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
                   onPress={() => setShowEditProfile(false)}
+                  disabled={updating}
                 >
                   <Text style={[styles.buttonText, styles.secondaryButtonText]}>
                     Cancel
@@ -893,9 +993,11 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={[styles.button, styles.primaryButton]}
                   onPress={handleUpdateProfile}
+                  disabled={updating}
                 >
+                  {updating && <ActivityIndicator size="small" color={colors.background} />}
                   <Text style={[styles.buttonText, styles.primaryButtonText]}>
-                    Save
+                    {updating ? 'Saving...' : 'Save'}
                   </Text>
                 </TouchableOpacity>
               </View>
