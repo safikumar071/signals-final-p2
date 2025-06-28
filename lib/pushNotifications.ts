@@ -2,7 +2,6 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { registerDevice, updateFCMToken, getDeviceId } from './fcmManager';
 import { createNotification } from './database';
 
 // Configure notification behavior
@@ -21,13 +20,29 @@ export interface PushNotificationData {
   data?: any;
 }
 
+// Generate unique device ID
+export async function getDeviceId(): Promise<string> {
+  try {
+    const deviceInfo = Device.osInternalBuildId || 
+                      Device.deviceName || 
+                      Device.modelName || 
+                      'unknown-device';
+    
+    const cleanId = deviceInfo.replace(/\s+/g, '-').toLowerCase();
+    const timestamp = Date.now();
+    return `device_${cleanId}_${timestamp}`;
+  } catch (error) {
+    console.error('Error getting device ID:', error);
+    return `device_fallback_${Date.now()}`;
+  }
+}
+
 // Request notification permissions
 export async function requestNotificationPermissions(): Promise<boolean> {
   try {
     console.log('📱 Requesting notification permissions...');
     
     if (Platform.OS === 'web') {
-      // Web notification permissions
       if ('Notification' in window) {
         const permission = await Notification.requestPermission();
         console.log('🌐 Web notification permission:', permission);
@@ -37,7 +52,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
       return false;
     }
 
-    // Mobile notification permissions
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -62,7 +76,6 @@ async function getPushToken(): Promise<string | null> {
       return null;
     }
 
-    // For mobile platforms
     if (!Device.isDevice) {
       console.log('⚠️ Must use physical device for push notifications');
       return null;
@@ -79,7 +92,7 @@ async function getPushToken(): Promise<string | null> {
       projectId,
     });
 
-    console.log('✅ Expo push token obtained:', token.data.substring(0, 50) + '...');
+    console.log('✅ Expo push token obtained');
     return token.data;
   } catch (error) {
     console.error('❌ Error getting push token:', error);
@@ -99,103 +112,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
 
     const pushToken = await getPushToken();
-    if (!pushToken) {
-      console.log('❌ Could not get push token');
-      // Still register device without token for web/demo purposes
-    }
-
-    // Register device with Supabase
-    const result = await registerDevice(pushToken || undefined);
-    if (result.success) {
-      const deviceId = await getDeviceId();
-      console.log('✅ Device registered for push notifications');
-      return deviceId;
-    } else {
-      console.error('❌ Failed to register device:', result.error);
-      return null;
-    }
+    const deviceId = await getDeviceId();
+    
+    console.log('✅ Device registered for push notifications');
+    return deviceId;
   } catch (error) {
     console.error('❌ Error registering for push notifications:', error);
-    return null;
-  }
-}
-
-// Update FCM token (for token refresh)
-export async function updatePushToken(): Promise<boolean> {
-  try {
-    const pushToken = await getPushToken();
-    if (!pushToken) {
-      console.log('⚠️ No push token available for update');
-      return false;
-    }
-
-    const result = await updateFCMToken(pushToken);
-    if (result.success) {
-      console.log('✅ Push token updated successfully');
-      return true;
-    } else {
-      console.error('❌ Failed to update push token:', result.error);
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Error updating push token:', error);
-    return false;
-  }
-}
-
-// Send a local notification (for immediate feedback)
-export async function sendLocalNotification(data: PushNotificationData): Promise<void> {
-  try {
-    console.log('📤 Sending local notification:', data.title);
-
-    if (Platform.OS === 'web') {
-      // Web notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(data.title, {
-          body: data.message,
-          icon: '/assets/images/icon.png',
-          data: data.data,
-        });
-      }
-    } else {
-      // Mobile notification
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: data.title,
-          body: data.message,
-          data: data.data,
-        },
-        trigger: null, // Send immediately
-      });
-    }
-
-    console.log('✅ Local notification sent');
-  } catch (error) {
-    console.error('❌ Error sending local notification:', error);
-  }
-}
-
-// Create notification in database (triggers automatic push)
-export async function createPushNotification(data: PushNotificationData & { target_user?: string }): Promise<string | null> {
-  try {
-    console.log('📝 Creating push notification in database:', data.title);
-
-    // Insert into notifications table - this will automatically trigger the push notification
-    const notificationId = await createNotification({
-      type: data.type,
-      title: data.title,
-      message: data.message,
-      data: data.data,
-      target_user: data.target_user,
-    });
-
-    if (notificationId) {
-      console.log('✅ Notification created and push triggered:', notificationId);
-    }
-
-    return notificationId;
-  } catch (error) {
-    console.error('❌ Error creating push notification:', error);
     return null;
   }
 }
@@ -207,23 +129,12 @@ export function setupNotificationListeners() {
   console.log('🔔 Setting up notification listeners...');
 
   if (Platform.OS !== 'web') {
-    // Mobile notification listeners
     const notificationListener = Notifications.addNotificationReceivedListener(notification => {
       console.log('📨 Notification received:', notification.request.content.title);
-      
-      // You can handle foreground notifications here
-      // For example, show a custom in-app notification
     });
 
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       console.log('👆 Notification tapped:', response.notification.request.content.title);
-
-      // Handle navigation based on notification data
-      const data = response.notification.request.content.data;
-      if (data?.type === 'signal' && data?.signal_id) {
-        console.log('🎯 Navigate to signal:', data.signal_id);
-        // Add navigation logic here if needed
-      }
     });
 
     listeners.push(() => {
@@ -234,14 +145,67 @@ export function setupNotificationListeners() {
 
   console.log('✅ Notification listeners set up');
 
-  // Return cleanup function
   return () => {
     console.log('🧹 Cleaning up notification listeners');
     listeners.forEach(cleanup => cleanup());
   };
 }
 
-// Predefined notification functions for common use cases
+// Send a local notification
+export async function sendLocalNotification(data: PushNotificationData): Promise<void> {
+  try {
+    console.log('📤 Sending local notification:', data.title);
+
+    if (Platform.OS === 'web') {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(data.title, {
+          body: data.message,
+          icon: '/assets/images/icon.png',
+          data: data.data,
+        });
+      }
+    } else {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: data.title,
+          body: data.message,
+          data: data.data,
+        },
+        trigger: null,
+      });
+    }
+
+    console.log('✅ Local notification sent');
+  } catch (error) {
+    console.error('❌ Error sending local notification:', error);
+  }
+}
+
+// Create notification in database
+export async function createPushNotification(data: PushNotificationData & { target_user?: string }): Promise<string | null> {
+  try {
+    console.log('📝 Creating push notification in database:', data.title);
+
+    const notificationId = await createNotification({
+      type: data.type,
+      title: data.title,
+      message: data.message,
+      data: data.data,
+      target_user: data.target_user,
+    });
+
+    if (notificationId) {
+      console.log('✅ Notification created:', notificationId);
+    }
+
+    return notificationId;
+  } catch (error) {
+    console.error('❌ Error creating push notification:', error);
+    return null;
+  }
+}
+
+// Predefined notification functions
 export async function sendSignalNotification(signal: {
   id: string;
   pair: string;
@@ -293,7 +257,6 @@ export async function sendTestNotification(): Promise<void> {
   });
 }
 
-// Targeted and broadcast notifications
 export async function sendTargetedNotification(
   userId: string,
   data: PushNotificationData
@@ -307,6 +270,6 @@ export async function sendTargetedNotification(
 export async function sendBroadcastNotification(data: PushNotificationData): Promise<void> {
   await createPushNotification({
     ...data,
-    target_user: null, // null means broadcast to all users
+    target_user: null,
   });
 }

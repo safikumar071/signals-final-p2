@@ -8,7 +8,6 @@ import {
   setupNotificationListeners,
   requestNotificationPermissions,
 } from '../lib/pushNotifications';
-import { getDeviceProfile } from '../lib/fcmManager';
 
 interface PushNotificationManagerProps {
   onRegistrationComplete?: (deviceId: string | null) => void;
@@ -24,7 +23,6 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
   useEffect(() => {
     checkRegistrationStatus();
     
-    // Setup notification listeners
     const cleanup = setupNotificationListeners();
     
     return cleanup;
@@ -32,17 +30,11 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
 
   const checkRegistrationStatus = async () => {
     try {
-      const profile = await getDeviceProfile();
-      const hasToken = !!profile?.fcm_token;
+      // For demo purposes, assume not registered initially
+      setIsRegistered(false);
+      setDeviceId(null);
       
-      setIsRegistered(hasToken);
-      setDeviceId(profile?.user_id || null);
-      
-      console.log('📊 Push notification status:', {
-        isRegistered: hasToken,
-        deviceId: profile?.user_id?.substring(0, 20) + '...',
-        deviceType: profile?.device_type
-      });
+      console.log('📊 Push notification status: not registered');
     } catch (error) {
       console.error('❌ Error checking registration status:', error);
       setIsRegistered(false);
@@ -92,8 +84,7 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
           t('notificationPermissionMessage'),
           [
             { text: t('cancel'), style: 'cancel' },
-            { text: t('settings'), onPress: () => {
-              // In a real app, you'd open device settings here
+            { text: 'Settings', onPress: () => {
               console.log('Open device settings for notifications');
             }}
           ]
