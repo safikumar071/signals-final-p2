@@ -13,12 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Calendar, User, Globe, ChevronDown, Check } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { createUserProfile, cacheOnboardingStatus, OnboardingData } from '../lib/userProfile';
-import { LANGUAGES } from '../lib/forex';
+import { saveUserProfile, LANGUAGE_OPTIONS } from '../lib/deviceProfile';
 
 export default function OnboardingScreen() {
   const { colors, fontSizes } = useTheme();
-  const [formData, setFormData] = useState<OnboardingData>({
+  const [formData, setFormData] = useState({
     name: '',
     dob: '',
     language: 'en',
@@ -28,7 +27,7 @@ export default function OnboardingScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedLanguage = LANGUAGES.find(lang => lang.code === formData.language);
+  const selectedLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === formData.language);
 
   const handleDateChange = (date: string) => {
     setFormData(prev => ({ ...prev, dob: date }));
@@ -57,13 +56,16 @@ export default function OnboardingScreen() {
 
     setIsSubmitting(true);
     try {
-      const success = await createUserProfile(formData);
+      const result = await saveUserProfile(
+        formData.name,
+        formData.dob,
+        formData.language
+      );
 
-      if (success) {
-        await cacheOnboardingStatus(true);
+      if (result.success) {
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Error', 'Failed to save your profile. Please try again.');
+        Alert.alert('Error', result.error || 'Failed to save your profile. Please try again.');
       }
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
@@ -323,7 +325,7 @@ export default function OnboardingScreen() {
               <Text style={styles.modalTitle}>Select Language</Text>
             </View>
             <ScrollView>
-              {LANGUAGES.map((language) => (
+              {LANGUAGE_OPTIONS.map((language) => (
                 <TouchableOpacity
                   key={language.code}
                   style={[

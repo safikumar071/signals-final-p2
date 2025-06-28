@@ -11,6 +11,8 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { checkOnboardingStatus } from '@/lib/deviceProfile';
+import { router } from 'expo-router';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -18,6 +20,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   useFrameworkReady();
   const [isReady, setIsReady] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
@@ -29,6 +32,10 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
+        // Check if onboarding is completed
+        const completed = await checkOnboardingStatus();
+        setOnboardingCompleted(completed);
+        
         // Simple initialization without navigation calls
         console.log('App initializing...');
         
@@ -36,6 +43,7 @@ export default function RootLayout() {
         setIsReady(true);
       } catch (error) {
         console.error('Error during app initialization:', error);
+        setOnboardingCompleted(false);
         setIsReady(true);
       }
     }
@@ -47,17 +55,27 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Navigate based on onboarding status
+  useEffect(() => {
+    if (isReady && onboardingCompleted !== null) {
+      if (!onboardingCompleted) {
+        router.replace('/onboarding');
+      }
+    }
+  }, [isReady, onboardingCompleted]);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
-  if (!isReady) {
+  if (!isReady || onboardingCompleted === null) {
     return null;
   }
 
   return (
     <ThemeProvider>
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

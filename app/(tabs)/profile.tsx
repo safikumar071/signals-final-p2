@@ -17,8 +17,7 @@ import { User, Bell, Shield, CircleHelp as HelpCircle, Settings, LogOut, Chevron
 import { useTheme } from '../../contexts/ThemeContext';
 import NotificationTestPanel from '../../components/NotificationTestPanel';
 import BackendMonitor from '../../components/BackendMonitor';
-import { getUserProfile, updateUserProfile, UserProfile } from '../../lib/userProfile';
-import { LANGUAGES } from '../../lib/forex';
+import { loadUserProfile, updateUserProfile, LANGUAGE_OPTIONS, UserProfile } from '../../lib/deviceProfile';
 
 export default function ProfileScreen() {
   const { colors, fontSizes, theme, setTheme, fontSize, setFontSize } = useTheme();
@@ -29,6 +28,7 @@ export default function ProfileScreen() {
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editData, setEditData] = useState({ name: '', dob: '', language: '' });
+  const [loading, setLoading] = useState(true);
 
   const userStats = {
     memberSince: 'January 2024',
@@ -40,12 +40,13 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    loadUserProfile();
+    loadProfile();
   }, []);
 
-  const loadUserProfile = async () => {
+  const loadProfile = async () => {
     try {
-      const profile = await getUserProfile();
+      setLoading(true);
+      const profile = await loadUserProfile();
       setUserProfile(profile);
       if (profile) {
         setEditData({
@@ -56,6 +57,8 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,18 +69,18 @@ export default function ProfileScreen() {
     }
 
     try {
-      const success = await updateUserProfile({
+      const result = await updateUserProfile({
         name: editData.name,
         dob: editData.dob,
         language: editData.language,
       });
 
-      if (success) {
-        await loadUserProfile();
+      if (result.success) {
+        await loadProfile();
         setShowEditProfile(false);
         Alert.alert('Success', 'Profile updated successfully');
       } else {
-        Alert.alert('Error', 'Failed to update profile');
+        Alert.alert('Error', result.error || 'Failed to update profile');
       }
     } catch (error) {
       Alert.alert('Error', 'Something went wrong');
@@ -86,10 +89,12 @@ export default function ProfileScreen() {
 
   const handleLanguageUpdate = async (languageCode: string) => {
     try {
-      const success = await updateUserProfile({ language: languageCode });
-      if (success) {
-        await loadUserProfile();
+      const result = await updateUserProfile({ language: languageCode });
+      if (result.success) {
+        await loadProfile();
         setShowLanguagePicker(false);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update language');
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update language');
@@ -167,13 +172,13 @@ export default function ProfileScreen() {
 
   const renderStat = (icon: any, value: string, label: string, color: string) => (
     <View style={styles.statCard}>
-      {React.createElement(icon, { size: 20, color })}
+      {React.createElement(icon, { size: 24, color })}
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 
-  const selectedLanguage = LANGUAGES.find(lang => lang.code === userProfile?.language);
+  const selectedLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === userProfile?.language);
 
   const styles = StyleSheet.create({
     container: {
@@ -183,6 +188,16 @@ export default function ProfileScreen() {
     content: {
       flex: 1,
       paddingHorizontal: 20,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      color: colors.text,
+      fontSize: fontSizes.medium,
+      fontFamily: 'Inter-Medium',
     },
     profileHeader: {
       alignItems: 'center',
@@ -559,6 +574,16 @@ export default function ProfileScreen() {
     },
   });
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -794,7 +819,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView>
-              {LANGUAGES.map((language) => (
+              {LANGUAGE_OPTIONS.map((language) => (
                 <TouchableOpacity
                   key={language.code}
                   style={[
