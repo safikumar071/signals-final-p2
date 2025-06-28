@@ -13,7 +13,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Shield, HelpCircle, Settings, ChevronRight, Share2, Moon, Sun, Type, Smartphone, Database, Globe, Check, X } from 'lucide-react-native';
+import { Bell, Shield, CircleHelp as HelpCircle, Settings, ChevronRight, Share2, Moon, Sun, Type, Smartphone, Database, Globe, Check, X } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import NotificationTestPanel from '../../components/NotificationTestPanel';
