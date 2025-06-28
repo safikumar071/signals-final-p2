@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Bell, BellOff, Smartphone, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { Bell, BellOff, Smartphone, CheckCircle, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
@@ -9,8 +9,9 @@ import {
   requestNotificationPermissions,
   getCurrentDeviceId,
   getDeviceProfile,
+  sendTestNotification,
   DeviceProfile,
-} from '../lib/fcm';
+} from '../lib/pushNotifications';
 
 interface PushNotificationManagerProps {
   onRegistrationComplete?: (deviceId: string | null) => void;
@@ -41,12 +42,12 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
       
       setDeviceId(id);
       setDeviceProfile(profile);
-      setIsRegistered(!!profile?.fcm_token);
+      setIsRegistered(!!profile?.expo_push_token);
       
       console.log('📊 Push notification status:', {
         deviceId: id.substring(0, 20) + '...',
         hasProfile: !!profile,
-        hasFCMToken: !!profile?.fcm_token
+        hasPushToken: !!profile?.expo_push_token
       });
     } catch (error) {
       console.error('❌ Error checking registration status:', error);
@@ -70,20 +71,20 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
         setDeviceProfile(profile);
         
         Alert.alert(
-          t('success'),
-          t('notificationsEnabled'),
-          [{ text: t('ok'), style: 'default' }]
+          'Success',
+          'Push notifications enabled successfully!',
+          [{ text: 'OK', style: 'default' }]
         );
       } else {
         Alert.alert(
-          t('error'),
-          t('notificationRegistrationFailed'),
-          [{ text: t('ok'), style: 'default' }]
+          'Error',
+          'Failed to register for push notifications. Please check your device settings.',
+          [{ text: 'OK', style: 'default' }]
         );
       }
     } catch (error) {
       console.error('❌ Registration error:', error);
-      Alert.alert(t('error'), t('networkError'));
+      Alert.alert('Error', 'Network error occurred');
     } finally {
       setIsRegistering(false);
     }
@@ -97,10 +98,10 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
         await handleRegister();
       } else {
         Alert.alert(
-          t('permissionRequired'),
-          t('notificationPermissionMessage'),
+          'Permission Required',
+          'Please enable notifications in your device settings to receive trading alerts.',
           [
-            { text: t('cancel'), style: 'cancel' },
+            { text: 'Cancel', style: 'cancel' },
             { text: 'Settings', onPress: () => {
               console.log('Open device settings for notifications');
             }}
@@ -112,13 +113,32 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
     }
   };
 
+  const handleTestNotification = async () => {
+    try {
+      await sendTestNotification();
+      Alert.alert('Test Sent', 'Check your notifications!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send test notification');
+    }
+  };
+
   const getStatusInfo = () => {
+    if (Platform.OS === 'web') {
+      return {
+        icon: Smartphone,
+        color: colors.textSecondary,
+        title: 'Web Platform',
+        subtitle: 'Push notifications not supported on web',
+        action: null,
+      };
+    }
+
     if (isRegistered === null) {
       return {
         icon: Smartphone,
         color: colors.textSecondary,
-        title: t('checkingStatus'),
-        subtitle: t('pleaseWait'),
+        title: 'Checking Status',
+        subtitle: 'Please wait...',
         action: null,
       };
     }
@@ -127,19 +147,22 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
       return {
         icon: CheckCircle,
         color: colors.success,
-        title: t('notificationsEnabled'),
-        subtitle: t('deviceRegistered'),
-        action: null,
+        title: 'Notifications Enabled',
+        subtitle: 'Device registered for push notifications',
+        action: {
+          text: 'Send Test',
+          onPress: handleTestNotification,
+        },
       };
     }
 
     return {
       icon: AlertCircle,
       color: colors.warning,
-      title: t('notificationsDisabled'),
-      subtitle: t('enableNotificationsMessage'),
+      title: 'Notifications Disabled',
+      subtitle: 'Enable notifications to receive trading alerts',
       action: {
-        text: t('enableNotifications'),
+        text: 'Enable Notifications',
         onPress: handleRequestPermissions,
       },
     };
@@ -238,21 +261,21 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
           disabled={isRegistering}
         >
           <Text style={styles.actionButtonText}>
-            {isRegistering ? t('registering') : statusInfo.action.text}
+            {isRegistering ? 'Registering...' : statusInfo.action.text}
           </Text>
         </TouchableOpacity>
       )}
 
-      {deviceProfile && (
+      {deviceProfile && Platform.OS !== 'web' && (
         <View style={styles.deviceInfo}>
           <Text style={styles.deviceText}>
-            {t('deviceId')}: {deviceId?.substring(0, 20)}...
+            Device ID: {deviceId?.substring(0, 20)}...
           </Text>
           <Text style={styles.deviceText}>
-            {t('deviceType')}: {deviceProfile.device_type}
+            Device Type: {deviceProfile.device_type}
           </Text>
           <Text style={styles.deviceText}>
-            FCM Token: {deviceProfile.fcm_token ? 'Configured' : 'Not configured'}
+            Push Token: {deviceProfile.expo_push_token ? 'Configured' : 'Not configured'}
           </Text>
         </View>
       )}

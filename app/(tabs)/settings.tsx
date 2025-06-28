@@ -19,7 +19,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import NotificationTestPanel from '../../components/NotificationTestPanel';
 import BackendMonitor from '../../components/BackendMonitor';
 import PushNotificationManager from '../../components/PushNotificationManager';
-import { getCurrentDeviceId, getDeviceProfile, DeviceProfile } from '../../lib/fcm';
+import { getCurrentDeviceId, getDeviceProfile, DeviceProfile } from '../../lib/pushNotifications';
 
 export default function SettingsScreen() {
   const { colors, fontSizes, theme, setTheme, fontSize, setFontSize } = useTheme();
@@ -48,7 +48,7 @@ export default function SettingsScreen() {
         deviceId: id.substring(0, 20) + '...',
         hasProfile: !!profile,
         deviceType: profile?.device_type,
-        hasFCMToken: !!profile?.fcm_token
+        hasPushToken: !!profile?.expo_push_token
       });
     } catch (error) {
       console.error('❌ Error loading device info:', error);
@@ -503,7 +503,7 @@ export default function SettingsScreen() {
               <Text style={styles.deviceLabel}>{t('notifications')}:</Text>
               <View style={styles.statusBadge}>
                 <Text style={styles.statusText}>
-                  {deviceProfile?.fcm_token ? t('enabled') : t('disabled')}
+                  {deviceProfile?.expo_push_token ? t('enabled') : t('disabled')}
                 </Text>
               </View>
             </View>
@@ -526,19 +526,17 @@ export default function SettingsScreen() {
         {showBackendMonitor && Platform.OS === 'web' && <BackendMonitor />}
 
         {/* Notification Test Panel Toggle */}
-        {Platform.OS === 'web' && (
-          <TouchableOpacity
-            style={styles.testToggle}
-            onPress={() => setShowNotificationTests(!showNotificationTests)}
-          >
-            <Text style={styles.testToggleText}>
-              {showNotificationTests ? 'Hide' : 'Show'} Notification Tests
-            </Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.testToggle}
+          onPress={() => setShowNotificationTests(!showNotificationTests)}
+        >
+          <Text style={styles.testToggleText}>
+            {showNotificationTests ? 'Hide' : 'Show'} Notification Tests
+          </Text>
+        </TouchableOpacity>
 
         {/* Notification Test Panel */}
-        {showNotificationTests && Platform.OS === 'web' && <NotificationTestPanel />}
+        {showNotificationTests && <NotificationTestPanel />}
 
         {/* App Preferences */}
         <View style={styles.section}>

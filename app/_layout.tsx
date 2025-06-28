@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { setupNotificationListeners } from '@/lib/pushNotifications';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -31,7 +32,14 @@ export default function RootLayout() {
     async function prepare() {
       try {
         console.log('🚀 App initializing...');
+        
+        // Setup push notification listeners
+        const cleanup = setupNotificationListeners();
+        
         setIsReady(true);
+        
+        // Return cleanup function for when app unmounts
+        return cleanup;
       } catch (error) {
         console.error('❌ Error during app initialization:', error);
         setIsReady(true);

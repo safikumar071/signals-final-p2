@@ -7,83 +7,75 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  Platform,
 } from 'react-native';
-import { Bell, Send, TestTube, Award, TrendingUp, CircleAlert as AlertCircle, Users, User } from 'lucide-react-native';
+import { Bell, Send, TestTube, Award, TrendingUp, AlertCircle, Users, User } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { createNotification } from '../lib/database';
-import { sendLocalNotification } from '../lib/fcm';
+import {
+  sendTestNotification,
+  sendSignalNotification,
+  sendAchievementNotification,
+  broadcastNotification,
+  sendLocalNotification,
+} from '../lib/pushNotifications';
 
 export default function NotificationTestPanel() {
   const { colors, fontSizes } = useTheme();
   const { t } = useLanguage();
   const [customTitle, setCustomTitle] = useState('Custom Test Notification');
   const [customMessage, setCustomMessage] = useState('This is a custom test message');
-  const [targetUserId, setTargetUserId] = useState('');
 
   const handleTestNotification = async () => {
     try {
-      await sendLocalNotification({
-        type: 'signal',
-        title: 'Test Signal Alert',
-        message: 'XAU/USD BUY signal activated! Entry: $2,345.67',
-        data: {
-          signal_id: 'test-123',
-          pair: 'XAU/USD',
-          type: 'BUY',
-          entry_price: 2345.67,
-          test: true,
-        },
-      });
-      Alert.alert(t('success'), 'Test notification sent locally!');
+      await sendTestNotification();
+      Alert.alert('Success', 'Test notification sent!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to send test notification');
+      Alert.alert('Error', 'Failed to send test notification');
     }
   };
 
   const handleSignalNotification = async () => {
     try {
-      await createNotification({
-        type: 'signal',
-        title: 'New Signal Alert',
-        message: 'XAU/USD BUY signal activated! Entry: $2,345.67',
-        data: {
-          signal_id: 'test-signal-123',
-          pair: 'XAU/USD',
-          type: 'BUY',
-          entry_price: 2345.67,
-        },
+      await sendSignalNotification({
+        id: 'test-signal-123',
+        pair: 'XAU/USD',
+        type: 'BUY',
+        entry_price: 2345.67,
+        status: 'active',
       });
-      Alert.alert(t('success'), 'Signal notification created in database!');
+      Alert.alert('Success', 'Signal notification sent!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to create signal notification');
+      Alert.alert('Error', 'Failed to send signal notification');
     }
   };
 
   const handleAchievementNotification = async () => {
     try {
-      await createNotification({
-        type: 'achievement',
-        title: 'Achievement Unlocked: Winning Streak',
-        message: 'You\'ve achieved a 5-day winning streak!',
-        data: {
-          achievement_type: 'streak',
-        },
+      await sendAchievementNotification({
+        title: 'Winning Streak',
+        description: 'You\'ve achieved a 5-day winning streak!',
+        type: 'streak',
       });
-      Alert.alert(t('success'), 'Achievement notification created!');
+      Alert.alert('Success', 'Achievement notification sent!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to create achievement notification');
+      Alert.alert('Error', 'Failed to send achievement notification');
     }
   };
 
   const handleCustomNotification = async () => {
     if (!customTitle.trim() || !customMessage.trim()) {
-      Alert.alert(t('error'), 'Please enter both title and message');
+      Alert.alert('Error', 'Please enter both title and message');
       return;
     }
 
     try {
-      await createNotification({
+      if (Platform.OS === 'web') {
+        Alert.alert('Info', 'Custom notifications not supported on web');
+        return;
+      }
+
+      await sendLocalNotification({
         type: 'announcement',
         title: customTitle,
         message: customMessage,
@@ -92,15 +84,15 @@ export default function NotificationTestPanel() {
           timestamp: new Date().toISOString(),
         },
       });
-      Alert.alert(t('success'), 'Custom notification created!');
+      Alert.alert('Success', 'Custom notification sent locally!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to create custom notification');
+      Alert.alert('Error', 'Failed to send custom notification');
     }
   };
 
   const handleBroadcastNotification = async () => {
     try {
-      await createNotification({
+      await broadcastNotification({
         type: 'announcement',
         title: 'Market Update',
         message: 'Gold showing strong bullish momentum this week!',
@@ -109,32 +101,9 @@ export default function NotificationTestPanel() {
           sentiment: 'bullish',
         },
       });
-      Alert.alert(t('success'), 'Broadcast notification created!');
+      Alert.alert('Success', 'Broadcast notification sent!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to create broadcast notification');
-    }
-  };
-
-  const handleTargetedNotification = async () => {
-    if (!targetUserId.trim()) {
-      Alert.alert(t('error'), 'Please enter a target user ID');
-      return;
-    }
-
-    try {
-      await createNotification({
-        type: 'alert',
-        title: 'Personal Alert',
-        message: `This is a targeted message for user ${targetUserId}`,
-        target_user: targetUserId,
-        data: {
-          targeted: true,
-          user_id: targetUserId,
-        },
-      });
-      Alert.alert(t('success'), `Targeted notification created for user: ${targetUserId}`);
-    } catch (error) {
-      Alert.alert(t('error'), 'Failed to create targeted notification');
+      Alert.alert('Error', 'Failed to send broadcast notification');
     }
   };
 
@@ -150,7 +119,7 @@ export default function NotificationTestPanel() {
     {
       id: 'signal',
       title: 'Signal Alert',
-      description: 'Create a trading signal notification',
+      description: 'Send a trading signal notification',
       icon: TrendingUp,
       color: colors.success,
       onPress: handleSignalNotification,
@@ -158,7 +127,7 @@ export default function NotificationTestPanel() {
     {
       id: 'achievement',
       title: 'Achievement',
-      description: 'Create an achievement notification',
+      description: 'Send an achievement notification',
       icon: Award,
       color: colors.warning,
       onPress: handleAchievementNotification,
@@ -166,7 +135,7 @@ export default function NotificationTestPanel() {
     {
       id: 'broadcast',
       title: 'Broadcast',
-      description: 'Create notification for all users',
+      description: 'Send notification to all registered devices',
       icon: Users,
       color: colors.secondary,
       onPress: handleBroadcastNotification,
@@ -315,6 +284,27 @@ export default function NotificationTestPanel() {
     },
   });
 
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.headerIcon}>
+            <Bell size={18} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={styles.title}>Notification Testing</Text>
+            <Text style={styles.subtitle}>Not available on web platform</Text>
+          </View>
+        </View>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>
+            Push notifications are only available on iOS and Android devices. Please test on a physical device.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -329,7 +319,7 @@ export default function NotificationTestPanel() {
 
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
-          ✨ Test different types of notifications. Database notifications will trigger automatic push notifications if FCM is configured properly.
+          ✨ Test different types of notifications. Make sure you have enabled notifications and registered your device first.
         </Text>
       </View>
 
@@ -356,7 +346,7 @@ export default function NotificationTestPanel() {
 
         {/* Custom Notification Section */}
         <View style={styles.customSection}>
-          <Text style={styles.sectionTitle}>Custom Notification</Text>
+          <Text style={styles.sectionTitle}>Custom Local Notification</Text>
           
           <TextInput
             style={styles.input}
@@ -377,33 +367,15 @@ export default function NotificationTestPanel() {
           />
           
           <TouchableOpacity style={styles.customButton} onPress={handleCustomNotification}>
-            <Text style={styles.customButtonText}>Create Custom</Text>
+            <Text style={styles.customButtonText}>Send Custom</Text>
             <Send size={16} color={colors.background} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Targeted Notification Section */}
-        <View style={styles.customSection}>
-          <Text style={styles.sectionTitle}>Targeted Notification</Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Target user ID (e.g., device_123...)"
-            placeholderTextColor={colors.textSecondary}
-            value={targetUserId}
-            onChangeText={setTargetUserId}
-          />
-          
-          <TouchableOpacity style={styles.customButton} onPress={handleTargetedNotification}>
-            <User size={16} color={colors.background} style={{ marginRight: 8 }} />
-            <Text style={styles.customButtonText}>Create Targeted</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.warning}>
           <AlertCircle size={16} color={colors.warning} style={styles.warningIcon} />
           <Text style={styles.warningText}>
-            Database notifications will automatically trigger push notifications if your FCM configuration is complete. Check the notification_logs table in Supabase to monitor delivery status.
+            Push notifications require a physical device (iOS/Android) and proper permissions. Test notifications will appear immediately if permissions are granted.
           </Text>
         </View>
       </ScrollView>
