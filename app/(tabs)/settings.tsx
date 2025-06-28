@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,11 +25,7 @@ export default function SettingsScreen() {
   const [deviceId, setDeviceId] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadDeviceInfo();
-  }, []);
-
-  const loadDeviceInfo = async () => {
+  const loadDeviceInfo = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🔄 Loading device information...');
@@ -54,7 +50,11 @@ export default function SettingsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadDeviceInfo();
+  }, [loadDeviceInfo]);
 
   const handleShare = async () => {
     try {
