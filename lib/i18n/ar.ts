@@ -35,6 +35,7 @@ export default {
   all: 'الكل',
   active: 'نشط',
   closed: 'مغلق',
+  pending: 'معلق',
   accuracy: 'دقة {{value}}%',
   riskReward: 'R:R {{value}}',
   
@@ -114,7 +115,6 @@ export default {
   daysAgo: 'منذ {{count}}ي',
   
   // Signal Status
-  pending: 'معلق',
   signalActivated: 'تم تفعيل الإشارة',
   signalClosed: 'تم إغلاق الإشارة',
   

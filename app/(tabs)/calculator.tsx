@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calculator, TrendingUp, DollarSign, Target, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import {
   getForexPrice,
   calculatePips,
@@ -26,6 +27,7 @@ type CalculatorTab = 'pip' | 'lot' | 'pnl';
 
 export default function CalculatorScreen() {
   const { colors, fontSizes } = useTheme();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<CalculatorTab>('pip');
   const [selectedPair, setSelectedPair] = useState('XAU/USD');
   const [showPairPicker, setShowPairPicker] = useState(false);
@@ -65,7 +67,7 @@ export default function CalculatorScreen() {
   const fetchLivePrice = async () => {
     setLoading(true);
     try {
-      console.log('Fetching price for:', selectedPair); // Debug log
+      console.log('Fetching price for:', selectedPair);
       const price = await getForexPrice(selectedPair);
       console.log('Fetched price:', price);
       setLivePrice(price);
@@ -77,13 +79,12 @@ export default function CalculatorScreen() {
     }
   };
 
-
   const calculatePipValue = () => {
     const entry = parseFloat(pipData.entryPrice);
     const exit = parseFloat(pipData.exitPrice);
 
     if (isNaN(entry) || isNaN(exit)) {
-      Alert.alert('Error', 'Please enter valid prices');
+      Alert.alert(t('error'), 'Please enter valid prices');
       return;
     }
 
@@ -92,7 +93,7 @@ export default function CalculatorScreen() {
       setPipResult(result);
     } catch (error) {
       console.error('Error calculating pips:', error);
-      Alert.alert('Error', 'Failed to calculate pip value');
+      Alert.alert(t('error'), 'Failed to calculate pip value');
     }
   };
 
@@ -102,18 +103,17 @@ export default function CalculatorScreen() {
     const stopLoss = parseFloat(lotData.stopLossPips);
 
     if (isNaN(balance) || isNaN(risk) || isNaN(stopLoss)) {
-      Alert.alert('Error', 'Please enter valid values');
+      Alert.alert(t('error'), 'Please enter valid values');
       return;
     }
 
     try {
-      // Use standard pip value for calculation
       const pipValue = selectedPair.includes('JPY') ? 10 : 10;
       const result = calculateLotSize(balance, risk, stopLoss, pipValue);
       setLotResult(result);
     } catch (error) {
       console.error('Error calculating lot size:', error);
-      Alert.alert('Error', 'Failed to calculate lot size');
+      Alert.alert(t('error'), 'Failed to calculate lot size');
     }
   };
 
@@ -123,7 +123,7 @@ export default function CalculatorScreen() {
     const exit = parseFloat(pnlData.exitPrice);
 
     if (isNaN(lotSize) || isNaN(entry) || isNaN(exit)) {
-      Alert.alert('Error', 'Please enter valid values');
+      Alert.alert(t('error'), 'Please enter valid values');
       return;
     }
 
@@ -132,14 +132,14 @@ export default function CalculatorScreen() {
       setPnlResult(result);
     } catch (error) {
       console.error('Error calculating P&L:', error);
-      Alert.alert('Error', 'Failed to calculate P&L');
+      Alert.alert(t('error'), 'Failed to calculate P&L');
     }
   };
 
   const tabs = [
-    { id: 'pip' as CalculatorTab, title: 'Pip Calculator', icon: Target },
-    { id: 'lot' as CalculatorTab, title: 'Lot Size', icon: Calculator },
-    { id: 'pnl' as CalculatorTab, title: 'P&L Calculator', icon: TrendingUp },
+    { id: 'pip' as CalculatorTab, title: t('pipCalculator'), icon: Target },
+    { id: 'lot' as CalculatorTab, title: t('lotSize'), icon: Calculator },
+    { id: 'pnl' as CalculatorTab, title: t('pnlCalculator'), icon: TrendingUp },
   ];
 
   const styles = StyleSheet.create({
@@ -357,7 +357,7 @@ export default function CalculatorScreen() {
   const renderPipCalculator = () => (
     <View style={styles.calculatorCard}>
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Trade Type</Text>
+        <Text style={styles.label}>{t('tradeType')}</Text>
         <View style={styles.typeSelector}>
           <TouchableOpacity
             style={[
@@ -370,7 +370,7 @@ export default function CalculatorScreen() {
               styles.typeButtonText,
               pipData.type === 'BUY' && styles.typeButtonTextActive,
             ]}>
-              BUY
+              {t('buy')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -384,14 +384,14 @@ export default function CalculatorScreen() {
               styles.typeButtonText,
               pipData.type === 'SELL' && styles.typeButtonTextActive,
             ]}>
-              SELL
+              {t('sell')}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Entry Price</Text>
+        <Text style={styles.label}>{t('entryPrice')}</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter entry price"
@@ -415,25 +415,24 @@ export default function CalculatorScreen() {
       </View>
 
       <TouchableOpacity style={styles.calculateButton} onPress={calculatePipValue}>
-        <Text style={styles.calculateButtonText}>Calculate Pips</Text>
+        <Text style={styles.calculateButtonText}>{t('calculatePips')}</Text>
       </TouchableOpacity>
-
 
       {pipResult && (
         <View style={[styles.resultCard, pipResult.totalPips < 0 && styles.resultCardNegative]}>
           <Text style={styles.resultTitle}>Pip Calculation Result</Text>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Total Pips:</Text>
+            <Text style={styles.resultLabel}>{t('totalPips')}:</Text>
             <Text style={[styles.resultValue, pipResult.totalPips < 0 && { color: colors.error }]}>
               {pipResult.totalPips}
             </Text>
           </View>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Pip Value:</Text>
+            <Text style={styles.resultLabel}>{t('pipValue')}:</Text>
             <Text style={styles.resultValue}>{pipResult.pipValue}</Text>
           </View>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Price Difference:</Text>
+            <Text style={styles.resultLabel}>{t('priceDifference')}:</Text>
             <Text style={[styles.resultValue, pipResult.profit < 0 && { color: colors.error }]}>
               ${pipResult.profit.toFixed(2)}
             </Text>
@@ -482,22 +481,22 @@ export default function CalculatorScreen() {
       </View>
 
       <TouchableOpacity style={styles.calculateButton} onPress={calculateLotSizeValue}>
-        <Text style={styles.calculateButtonText}>Calculate Lot Size</Text>
+        <Text style={styles.calculateButtonText}>{t('calculateLotSize')}</Text>
       </TouchableOpacity>
 
       {lotResult && (
         <View style={[styles.resultCard, lotResult.lotSize < 0 && styles.resultCardNegative]}>
           <Text style={styles.resultTitle}>Lot Size Calculation</Text>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Recommended Lot Size:</Text>
+            <Text style={styles.resultLabel}>{t('recommendedLotSize')}:</Text>
             <Text style={styles.resultValue}>{lotResult.lotSize}</Text>
           </View>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Position Size:</Text>
+            <Text style={styles.resultLabel}>{t('positionSize')}:</Text>
             <Text style={styles.resultValue}>{lotResult.positionSize.toLocaleString()}</Text>
           </View>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Risk Amount:</Text>
+            <Text style={styles.resultLabel}>{t('riskAmount')}:</Text>
             <Text style={styles.resultValue}>${lotResult.margin.toFixed(2)}</Text>
           </View>
         </View>
@@ -508,7 +507,7 @@ export default function CalculatorScreen() {
   const renderPnLCalculator = () => (
     <View style={styles.calculatorCard}>
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Trade Type</Text>
+        <Text style={styles.label}>{t('tradeType')}</Text>
         <View style={styles.typeSelector}>
           <TouchableOpacity
             style={[
@@ -521,7 +520,7 @@ export default function CalculatorScreen() {
               styles.typeButtonText,
               pnlData.type === 'BUY' && styles.typeButtonTextActive,
             ]}>
-              BUY
+              {t('buy')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -535,7 +534,7 @@ export default function CalculatorScreen() {
               styles.typeButtonText,
               pnlData.type === 'SELL' && styles.typeButtonTextActive,
             ]}>
-              SELL
+              {t('sell')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -554,7 +553,7 @@ export default function CalculatorScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Entry Price</Text>
+        <Text style={styles.label}>{t('entryPrice')}</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter entry price"
@@ -578,14 +577,14 @@ export default function CalculatorScreen() {
       </View>
 
       <TouchableOpacity style={styles.calculateButton} onPress={calculatePnLValue}>
-        <Text style={styles.calculateButtonText}>Calculate P&L</Text>
+        <Text style={styles.calculateButtonText}>{t('calculatePnl')}</Text>
       </TouchableOpacity>
 
       {pnlResult && (
         <View style={[styles.resultCard, pnlResult.profitPercent < 0 && styles.resultCardNegative]}>
           <Text style={styles.resultTitle}>P&L Calculation Result</Text>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Profit/Loss:</Text>
+            <Text style={styles.resultLabel}>{t('profitLoss')}:</Text>
             <Text style={[
               styles.resultValue,
               { color: pnlResult.profit >= 0 ? colors.success : colors.error }
@@ -594,7 +593,7 @@ export default function CalculatorScreen() {
             </Text>
           </View>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Profit %:</Text>
+            <Text style={styles.resultLabel}>{t('profitPercent')}:</Text>
             <Text style={[
               styles.resultValue,
               { color: pnlResult.profitPercent >= 0 ? colors.success : colors.error }
@@ -603,18 +602,18 @@ export default function CalculatorScreen() {
             </Text>
           </View>
           <View style={styles.resultRow}>
-            <Text style={styles.resultLabel}>Pips:</Text>
+            <Text style={styles.resultLabel}>{t('pips')}:</Text>
             <Text style={styles.resultValue}>{pnlResult.pips}</Text>
           </View>
         </View>
-      )}z
+      )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Trading Calculators</Text>
+        <Text style={styles.title}>{t('calculatorTitle')}</Text>
 
         <TouchableOpacity
           style={styles.pairSelector}
@@ -623,20 +622,19 @@ export default function CalculatorScreen() {
           <Text style={styles.pairText}>{selectedPair}</Text>
 
           {loading ? (
-            <Text style={styles.livePrice}>Loading...</Text>
+            <Text style={styles.livePrice}>{t('loading')}</Text>
           ) : livePrice !== null ? (
             <Text style={styles.livePrice}>
               ${livePrice.toFixed(2)}
             </Text>
           ) : (
             <Text style={[styles.livePrice, { color: colors.textSecondary }]}>
-              Price unavailable
+              {t('priceUnavailable')}
             </Text>
           )}
 
           <ChevronDown size={20} color={colors.textSecondary} />
         </TouchableOpacity>
-
       </View>
 
       <View style={styles.tabContainer}>

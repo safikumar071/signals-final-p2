@@ -1,15 +1,16 @@
-// app/(tabs)/analysis.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import SignalCard from '../../components/SignalCard';
 import { subscribeToSignals } from '../../supabase/signals';
 import { Signal } from '../../lib/supabase';
 import { Award, ChartBar, DollarSign, Target, TrendingDown, TrendingUp } from 'lucide-react-native';
 
-export default function AnalysisScreen() {
+export default function SignalsScreen() {
   const { colors, fontSizes } = useTheme();
+  const { t } = useLanguage();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -38,7 +39,6 @@ export default function AnalysisScreen() {
       marginBottom: 24,
     },
     statCard: {
-      // flexBasis: '481',
       backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 24,
@@ -64,7 +64,7 @@ export default function AnalysisScreen() {
     statCardLarge: {
       flexBasis: '100%',
     },
-  })
+  });
 
   // Calculate portfolio stats from signals
   const closedSignals = signals.filter(s => s.status === 'closed');
@@ -103,30 +103,28 @@ export default function AnalysisScreen() {
             color: colors.text,
             fontFamily: 'Inter-Bold',
             marginBottom: 12
-          }}>Signals</Text>
-
-
+          }}>{t('signalsTitle')}</Text>
 
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <Target size={24} color={colors.success} />
               <Text style={styles.statValue}>{portfolioStats.totalTrades}</Text>
-              <Text style={styles.statLabel}>Total Trades</Text>
+              <Text style={styles.statLabel}>{t('totalTrades')}</Text>
             </View>
             <View style={styles.statCard}>
               <TrendingUp size={24} color={colors.success} />
               <Text style={styles.statValue}>{portfolioStats.profitTrades}</Text>
-              <Text style={styles.statLabel}>Profit Trades</Text>
+              <Text style={styles.statLabel}>{t('profitTrades')}</Text>
             </View>
             <View style={styles.statCard}>
               <TrendingDown size={24} color={colors.error} />
               <Text style={styles.statValue}>{portfolioStats.lossTrades}</Text>
-              <Text style={styles.statLabel}>Loss Trades</Text>
+              <Text style={styles.statLabel}>{t('lossTrades')}</Text>
             </View>
             <View style={styles.statCard}>
               <ChartBar size={24} color={colors.primary} />
               <Text style={styles.statValue}>{activeSignals.length}</Text>
-              <Text style={styles.statLabel}>Active Trades</Text>
+              <Text style={styles.statLabel}>{t('activeTrades')}</Text>
             </View>
           </View>
 
@@ -148,13 +146,11 @@ export default function AnalysisScreen() {
                   fontFamily: 'Inter-Medium',
                   fontSize: fontSizes.medium
                 }}>
-                  {f.toUpperCase()}
+                  {t(f.toUpperCase().toLowerCase())}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-
-
 
           {/* Signal Cards */}
           {filteredSignals.map(signal => (

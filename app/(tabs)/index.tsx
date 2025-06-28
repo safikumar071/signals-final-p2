@@ -12,6 +12,7 @@ import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TrendingUp, TrendingDown, Settings2, Bell, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import AssetSwitcher from '../../components/AssetSwitcher';
 import TimeframeSwitcher from '../../components/TimeframeSwitcher';
 import ConnectionStatus from '@/components/ConnectionStatus';
@@ -20,7 +21,7 @@ import NotificationSheet from '@/components/NotificationSheet';
 import SetupGuide from '@/components/SetupGuide';
 import { fetchMarketData, fetchTechnicalIndicators, fetchEconomicEvents, MarketData, TechnicalIndicator, EconomicEvent } from '../../lib/database';
 import { getForexPrice } from '../../lib/forex';
-import { fetchPriceSummary } from '../../lib/database'; // ⬅️ import the new function
+import { fetchPriceSummary } from '../../lib/database';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -31,7 +32,7 @@ type LivePriceData = {
   high: number;
   low: number;
   volume: string | number;
-  updated_at?: string; // optional, if you want to show last updated time
+  updated_at?: string;
 };
 
 const getTradingViewInterval = (label: string): string => {
@@ -44,12 +45,12 @@ const getTradingViewInterval = (label: string): string => {
     '1D': 'D',
     '1W': 'W',
   };
-  return map[label] || '60'; // default to 1H
+  return map[label] || '60';
 };
-
 
 export default function HomeScreen() {
   const { colors, fontSizes } = useTheme();
+  const { t } = useLanguage();
   const [selectedAsset, setSelectedAsset] = useState<'XAU/USD' | 'BTC/USD'>('XAU/USD');
   const [timeframe, setTimeframe] = useState('1H');
   const [setupGuideVisible, setSetupGuideVisible] = useState(false);
@@ -59,7 +60,6 @@ export default function HomeScreen() {
   const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
   const [livePrice, setLivePrice] = useState<number | null>(null);
   const tradingViewInterval = getTradingViewInterval(timeframe);
-  // const [priceLoading, setPriceLoading] = useState(false);
 
   const fetchLivePrice = async () => {
     setPriceLoading(true);
@@ -91,13 +91,12 @@ export default function HomeScreen() {
     high: 0,
     low: 0,
     volume: '-',
-    updated_at: undefined, // optional, if you want to show last updated time
+    updated_at: undefined,
   });
   const [priceLoading, setPriceLoading] = useState(false);
 
   useEffect(() => {
     loadData();
-    // fetchLivePrice();
   }, [selectedAsset]);
 
   const loadData = async () => {
@@ -112,7 +111,6 @@ export default function HomeScreen() {
       setTechnicalIndicators(indicators);
       setEconomicEvents(events);
 
-      // 🔄 Set current live price from DB based on selectedAsset
       const assetData = market.find(item => item.pair === selectedAsset);
       if (assetData) {
         setCurrentData({
@@ -121,19 +119,17 @@ export default function HomeScreen() {
           change_percent: assetData.change_percent,
           high: assetData.high,
           low: assetData.low,
-          volume: assetData.volume || '-', // fallback
+          volume: assetData.volume || '-',
           updated_at: assetData.updated_at,
         });
       }
     } catch (error) {
       console.error('Error loading home screen data:', error);
     } finally {
-      setPriceLoading(false); // optional
+      setPriceLoading(false);
     }
   };
 
-
-  // Use live price if available
   if (livePrice) {
     currentData.price = livePrice;
   }
@@ -279,10 +275,8 @@ export default function HomeScreen() {
       fontSize: fontSizes.subtitle,
       fontWeight: 'bold',
       color: colors.text,
-      // marginBottom: 16,
       fontFamily: 'Inter-Bold',
     },
-
     indicatorCard: {
       backgroundColor: colors.surface,
       borderRadius: 12,
@@ -309,73 +303,14 @@ export default function HomeScreen() {
       fontSize: fontSizes.small,
       fontFamily: 'Inter-Regular',
     },
-    eventCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    eventHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 8,
-    },
-    eventTime: {
-      fontSize: fontSizes.medium,
-      color: colors.primary,
-      fontFamily: 'Inter-Medium',
-    },
-    impactBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 4,
-    },
-    impactText: {
-      fontSize: 10,
-      fontWeight: '600',
-      color: colors.text,
-      fontFamily: 'Inter-SemiBold',
-    },
-    eventContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 8,
-    },
-    currencyBadge: {
-      fontSize: fontSizes.small,
-      color: colors.primary,
-      backgroundColor: `${colors.primary}20`,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
-      fontFamily: 'Inter-Medium',
-    },
-    eventName: {
-      fontSize: fontSizes.medium,
-      color: colors.text,
-      flex: 1,
-      fontFamily: 'Inter-Regular',
-    },
-    eventDetails: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    eventDetail: {
-      fontSize: fontSizes.small,
-      color: colors.textSecondary,
-      fontFamily: 'Inter-Regular',
-    },
   });
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.title}>Gold & Silver Signals</Text>
-          <Text style={styles.subtitle}>Live Trading Opportunities</Text>
+          <Text style={styles.title}>{t('homeTitle')}</Text>
+          <Text style={styles.subtitle}>{t('homeSubtitle')}</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.actionButton}
@@ -391,8 +326,6 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* <ConnectionStatus /> */}
-      {/* <MarketOverview /> */}
       <AssetSwitcher selectedAsset={selectedAsset} onAssetChange={setSelectedAsset} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.livePriceCard}>
@@ -401,8 +334,8 @@ export default function HomeScreen() {
               <Text style={styles.pairTitle}>{selectedAsset}</Text>
               <Text style={{ color: colors.textSecondary, fontSize: fontSizes.medium }}>
                 {currentData.updated_at
-                  ? `Updated ${Math.ceil((Date.now() - new Date(currentData.updated_at).getTime()) / 60000)} minutes ago`
-                  : 'Updated recently '}
+                  ? t('updatedMinutesAgo', { minutes: Math.ceil((Date.now() - new Date(currentData.updated_at).getTime()) / 60000) })
+                  : t('updatedRecently')}
               </Text>
             </View>
             <View style={styles.changeContainer}>
@@ -423,25 +356,25 @@ export default function HomeScreen() {
             priceLoading && styles.priceLoading
           ]}>
             {priceLoading
-              ? 'Loading...'
+              ? t('loading')
               : `$${isFinite(currentData.price) ? currentData.price.toFixed(2) : '0.00'}`}
           </Text>
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>High</Text>
+              <Text style={styles.statLabel}>{t('high')}</Text>
               <Text style={styles.statValue}>
                 ${isFinite(currentData.high) ? currentData.high.toFixed(2) : '0.00'}
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Low</Text>
+              <Text style={styles.statLabel}>{t('low')}</Text>
               <Text style={styles.statValue}>
                 ${isFinite(currentData.low) ? currentData.low.toFixed(2) : '0.00'}
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Volume</Text>
+              <Text style={styles.statLabel}>{t('volume')}</Text>
               <Text style={styles.statValue}>
                 {currentData.volume || '-'}
               </Text>
@@ -478,12 +411,12 @@ export default function HomeScreen() {
         {/* Technical Indicators */}
         <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
           <Text style={styles.sectionTitle}>
-            Technical Indicators
+            {t('technicalIndicators')}
           </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: fontSizes.medium, marginBottom: 12 }} >
+          <Text style={{ color: colors.textSecondary, fontSize: fontSizes.medium, marginBottom: 12 }}>
             {technicalIndicators[0]?.updated_at
-              ? `Updated ${Math.ceil((Date.now() - new Date(technicalIndicators[0].updated_at).getTime()) / 60000)} minutes ago`
-              : 'Updated recently '}
+              ? t('updatedMinutesAgo', { minutes: Math.ceil((Date.now() - new Date(technicalIndicators[0].updated_at).getTime()) / 60000) })
+              : t('updatedRecently')}
           </Text>
 
           <View style={{ gap: 12 }}>
@@ -502,43 +435,8 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
-
-
-        {/* Economic Events */}
-        {/* <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
-          <Text style={{ fontSize: fontSizes.subtitle, fontWeight: 'bold', color: colors.text, marginBottom: 16 }}>Today's Economic Events</Text>
-          <View style={{ gap: 12 }}>
-            {economicEvents.map(event => (
-              <View key={event.id} style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ fontSize: fontSizes.medium, color: colors.primary }}>{event.time}</Text>
-                  <View style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                    borderRadius: 4,
-                    backgroundColor:
-                      event.impact === 'high'
-                        ? `${colors.error}33`
-                        : event.impact === 'medium'
-                          ? `${colors.warning}33`
-                          : `${colors.textSecondary}33`,
-                  }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: colors.text }}>{event.impact.toUpperCase()}</Text>
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Text style={{ fontSize: fontSizes.small, color: colors.primary, backgroundColor: `${colors.primary}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>{event.currency}</Text>
-                  <Text style={{ fontSize: fontSizes.medium, color: colors.text, flex: 1 }}>{event.event_name}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: fontSizes.small, color: colors.textSecondary }}>Forecast: {event.forecast}</Text>
-                  <Text style={{ fontSize: fontSizes.small, color: colors.textSecondary }}>Previous: {event.previous}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View> */}
       </ScrollView>
+      
       <NotificationSheet
         visible={notificationVisible}
         onClose={() => setNotificationVisible(false)}

@@ -35,6 +35,7 @@ export default {
   all: 'सभी',
   active: 'एक्टिव',
   closed: 'बंद',
+  pending: 'लंबित',
   accuracy: '{{value}}% सटीकता',
   riskReward: 'R:R {{value}}',
   
@@ -114,7 +115,6 @@ export default {
   daysAgo: '{{count}}दि पहले',
   
   // Signal Status
-  pending: 'लंबित',
   signalActivated: 'सिग्नल सक्रिय',
   signalClosed: 'सिग्नल बंद',
   

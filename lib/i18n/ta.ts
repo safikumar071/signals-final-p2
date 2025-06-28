@@ -35,6 +35,7 @@ export default {
   all: 'அனைத்தும்',
   active: 'செயலில்',
   closed: 'மூடப்பட்டது',
+  pending: 'நிலுவையில்',
   accuracy: '{{value}}% துல்லியம்',
   riskReward: 'R:R {{value}}',
   
@@ -114,7 +115,6 @@ export default {
   daysAgo: '{{count}}நா முன்',
   
   // Signal Status
-  pending: 'நிலுவையில்',
   signalActivated: 'சிக்னல் செயல்படுத்தப்பட்டது',
   signalClosed: 'சிக்னல் மூடப்பட்டது',
   

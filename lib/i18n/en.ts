@@ -35,6 +35,7 @@ export default {
   all: 'ALL',
   active: 'ACTIVE',
   closed: 'CLOSED',
+  pending: 'PENDING',
   accuracy: '{{value}}% accuracy',
   riskReward: 'R:R {{value}}',
   
@@ -114,7 +115,6 @@ export default {
   daysAgo: '{{count}}d ago',
   
   // Signal Status
-  pending: 'PENDING',
   signalActivated: 'Signal activated',
   signalClosed: 'Signal closed',
   

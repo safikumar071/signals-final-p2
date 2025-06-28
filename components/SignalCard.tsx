@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import { Signal } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SignalCardProps {
   signal: Signal;
@@ -23,6 +24,7 @@ interface SignalCardProps {
 
 export default function SignalCard({ signal }: SignalCardProps) {
   const { colors, fontSizes } = useTheme();
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
 
   const getStatusColor = (status: string) => {
@@ -46,10 +48,10 @@ export default function SignalCard({ signal }: SignalCardProps) {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
-    return 'Just now';
+    if (days > 0) return t('daysAgo', { count: days });
+    if (hours > 0) return t('hoursAgo', { count: hours });
+    if (minutes > 0) return t('minutesAgo', { count: minutes });
+    return t('justNow');
   };
 
   const formatPrice = (price: number) => {
@@ -152,13 +154,11 @@ export default function SignalCard({ signal }: SignalCardProps) {
       color: colors.textSecondary,
       lineHeight: 20,
     },
-
     takeProfitContainer: {
       marginTop: 12,
       gap: 8,
       marginBottom: 12,
     },
-
     takeProfitItem: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -170,7 +170,6 @@ export default function SignalCard({ signal }: SignalCardProps) {
       borderWidth: 1,
       borderColor: colors.border,
     },
-
     takeProfitText: {
       fontSize: fontSizes.large,
       color: colors.text,
@@ -188,24 +187,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
       justifyContent: 'center',
       alignItems: 'center',
     },
-
   });
-  function calculatePips(signal: Signal) {
-    const entryPrice = signal.entry_price;
-    const takeProfitLevels = signal.take_profit_levels;
-    const stopLoss = signal.stop_loss;
-
-    const maxProfit = takeProfitLevels.reduce(
-      (max, current) => Math.max(max, current - entryPrice),
-      0
-    );
-
-    const maxLoss = stopLoss - entryPrice;
-
-    const pips = maxProfit - maxLoss;
-
-    return pips.toFixed(2);
-  }
 
   return (
     <>
@@ -216,10 +198,9 @@ export default function SignalCard({ signal }: SignalCardProps) {
             <View style={styles.typeLabel}>
               <Text style={styles.typeLabelText}>{signal.type}</Text>
             </View>
-
           </View>
           <Text style={{ color: getStatusColor(signal.status) }}>
-            {signal.status.toUpperCase()}
+            {t(signal.status.toLowerCase())}
           </Text>
         </View>
 
@@ -228,10 +209,10 @@ export default function SignalCard({ signal }: SignalCardProps) {
             <Clock size={14} color={colors.textSecondary} />
             <Text style={styles.timeText}>{getTimeAgo(signal.timestamp)}</Text>
             <Text style={styles.timeText}>•</Text>
-            <Text style={styles.accuracyText}>{signal.accuracy}% accuracy</Text>
+            <Text style={styles.accuracyText}>{t('accuracy', { value: signal.accuracy })}</Text>
           </View>
           {signal.risk_reward && (
-            <Text style={styles.riskReward}>R:R {signal.risk_reward}</Text>
+            <Text style={styles.riskReward}>{t('riskReward', { value: signal.risk_reward })}</Text>
           )}
         </View>
       </TouchableOpacity>
@@ -251,7 +232,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
               </TouchableOpacity>
             </View>
             <Text style={styles.sheetItem}>
-              Entry Price: {formatPrice(signal.entry_price)}
+              {t('entryPrice')}: {formatPrice(signal.entry_price)}
             </Text>
             <View style={styles.takeProfitContainer}>
               {signal.take_profit_levels.map((tp, index) => {
@@ -260,7 +241,7 @@ export default function SignalCard({ signal }: SignalCardProps) {
                 return (
                   <View key={index} style={styles.takeProfitItem}>
                     <Text style={styles.takeProfitText}>
-                      Take Profit-{index + 1}:
+                      {t('takeProfit')}-{index + 1}:
                     </Text>
                     <Text style={styles.takeProfitText}>
                       {formatPrice(tp)}
@@ -269,14 +250,13 @@ export default function SignalCard({ signal }: SignalCardProps) {
                         color={isReached ? colors.success : colors.textSecondary}
                       />
                     </Text>
-
                   </View>
                 );
               })}
             </View>
 
             <Text style={styles.sheetItem}>
-              Stop Loss: {formatPrice(signal.stop_loss)}
+              {t('stopLoss')}: {formatPrice(signal.stop_loss)}
             </Text>
             <Text style={styles.sheetItem}>
               R:R: {signal.risk_reward}
