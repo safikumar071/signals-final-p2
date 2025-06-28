@@ -119,15 +119,46 @@ export async function saveUserProfile(
 
     console.log('Saving profile data:', profileData);
 
-    const { error } = await supabase
+    // First, check if a profile already exists
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('user_profiles')
-      .upsert(profileData, {
-        onConflict: 'user_id'
-      });
+      .select('id')
+      .eq('user_id', deviceId)
+      .single();
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return { success: false, error: error.message };
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      // PGRST116 means no rows found, which is expected for new users
+      console.error('Error checking existing profile:', fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    let result;
+    if (existingProfile) {
+      // Profile exists, update it
+      console.log('Updating existing profile for device ID:', deviceId);
+      result = await supabase
+        .from('user_profiles')
+        .update({
+          name: profileData.name,
+          dob: profileData.dob,
+          language: profileData.language,
+          onboarding_completed: profileData.onboarding_completed,
+          device_type: profileData.device_type,
+          app_version: profileData.app_version,
+          last_active: profileData.last_active,
+        })
+        .eq('user_id', deviceId);
+    } else {
+      // Profile doesn't exist, create it
+      console.log('Creating new profile for device ID:', deviceId);
+      result = await supabase
+        .from('user_profiles')
+        .insert(profileData);
+    }
+
+    if (result.error) {
+      console.error('Supabase operation error:', result.error);
+      return { success: false, error: result.error.message };
     }
 
     // Mark as created locally
