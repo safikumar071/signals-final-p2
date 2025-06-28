@@ -11,8 +11,6 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { checkOnboardingStatus } from '@/lib/deviceProfile';
-import { router } from 'expo-router';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -20,7 +18,6 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   useFrameworkReady();
   const [isReady, setIsReady] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
@@ -34,16 +31,10 @@ export default function RootLayout() {
       try {
         console.log('🚀 App initializing...');
         
-        // Check if onboarding is completed
-        const completed = await checkOnboardingStatus();
-        console.log('📋 Onboarding status:', completed);
-        
-        setOnboardingCompleted(completed);
+        // Simple initialization - no onboarding needed
         setIsReady(true);
       } catch (error) {
         console.error('❌ Error during app initialization:', error);
-        // Default to showing onboarding on error
-        setOnboardingCompleted(false);
         setIsReady(true);
       }
     }
@@ -55,36 +46,17 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Navigate based on onboarding status
-  useEffect(() => {
-    if (isReady && onboardingCompleted !== null) {
-      console.log('🧭 Navigation decision:', {
-        isReady,
-        onboardingCompleted,
-        action: onboardingCompleted ? 'Main App' : 'Onboarding'
-      });
-      
-      if (!onboardingCompleted) {
-        router.replace('/onboarding');
-      } else {
-        // Ensure we're on the main app if onboarding is completed
-        router.replace('/(tabs)');
-      }
-    }
-  }, [isReady, onboardingCompleted]);
-
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
-  if (!isReady || onboardingCompleted === null) {
+  if (!isReady) {
     return null;
   }
 
   return (
     <ThemeProvider>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

@@ -8,19 +8,10 @@ import NotificationSheet from '@/components/NotificationSheet';
 import SetupGuide from '@/components/SetupGuide';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
-
-
-
 export default function TabLayout() {
   const { colors, isDark, fontSizes } = useTheme();
 
-
-
   return (
-
-
-
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -46,7 +37,6 @@ export default function TabLayout() {
           title: 'Home',
           tabBarIcon: ({ size, color }) => (
             <HomeIcon size={size} color={color} />
-
           ),
         }}
       />
@@ -59,15 +49,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="portfolio"
-        options={{
-          title: 'Portfolio',
-          tabBarIcon: ({ size, color }) => (
-            <Wallet size={size} color={color} />
-          ),
-        }}
-      /> */}
       <Tabs.Screen
         name="calculator"
         options={{
@@ -78,16 +59,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="settings"
         options={{
-          title: 'Profile',
+          title: 'Settings',
           tabBarIcon: ({ size, color }) => (
-            <User size={size} color={color} />
+            <Settings2 size={size} color={color} />
           ),
         }}
       />
     </Tabs>
-
-
   );
 }
