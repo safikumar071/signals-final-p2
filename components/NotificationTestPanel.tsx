@@ -8,17 +8,11 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
-import { Bell, Send, TestTube, Award, TrendingUp, CircleAlert as AlertCircle, Users, User } from 'lucide-react-native';
+import { Bell, Send, TestTube, Award, TrendingUp, AlertCircle, Users, User } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import {
-  sendTestNotification,
-  sendSignalNotification,
-  sendAchievementNotification,
-  sendBroadcastNotification,
-  sendTargetedNotification,
-  createPushNotification,
-} from '../lib/pushNotifications';
+import { createNotification } from '../lib/database';
+import { sendLocalNotification } from '../lib/fcm';
 
 export default function NotificationTestPanel() {
   const { colors, fontSizes } = useTheme();
@@ -29,8 +23,19 @@ export default function NotificationTestPanel() {
 
   const handleTestNotification = async () => {
     try {
-      await sendTestNotification();
-      Alert.alert(t('success'), 'Test notification triggered! Check your device.');
+      await sendLocalNotification({
+        type: 'signal',
+        title: 'Test Signal Alert',
+        message: 'XAU/USD BUY signal activated! Entry: $2,345.67',
+        data: {
+          signal_id: 'test-123',
+          pair: 'XAU/USD',
+          type: 'BUY',
+          entry_price: 2345.67,
+          test: true,
+        },
+      });
+      Alert.alert(t('success'), 'Test notification sent locally!');
     } catch (error) {
       Alert.alert(t('error'), 'Failed to send test notification');
     }
@@ -38,29 +43,36 @@ export default function NotificationTestPanel() {
 
   const handleSignalNotification = async () => {
     try {
-      await sendSignalNotification({
-        id: 'test-signal-123',
-        pair: 'XAU/USD',
-        type: 'BUY',
-        entry_price: 2345.67,
-        status: 'active',
+      await createNotification({
+        type: 'signal',
+        title: 'New Signal Alert',
+        message: 'XAU/USD BUY signal activated! Entry: $2,345.67',
+        data: {
+          signal_id: 'test-signal-123',
+          pair: 'XAU/USD',
+          type: 'BUY',
+          entry_price: 2345.67,
+        },
       });
-      Alert.alert(t('success'), 'Signal notification triggered!');
+      Alert.alert(t('success'), 'Signal notification created in database!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to send signal notification');
+      Alert.alert(t('error'), 'Failed to create signal notification');
     }
   };
 
   const handleAchievementNotification = async () => {
     try {
-      await sendAchievementNotification({
-        title: 'Winning Streak',
-        description: 'You\'ve achieved a 5-day winning streak!',
-        type: 'streak',
+      await createNotification({
+        type: 'achievement',
+        title: 'Achievement Unlocked: Winning Streak',
+        message: 'You\'ve achieved a 5-day winning streak!',
+        data: {
+          achievement_type: 'streak',
+        },
       });
-      Alert.alert(t('success'), 'Achievement notification triggered!');
+      Alert.alert(t('success'), 'Achievement notification created!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to send achievement notification');
+      Alert.alert(t('error'), 'Failed to create achievement notification');
     }
   };
 
@@ -71,7 +83,7 @@ export default function NotificationTestPanel() {
     }
 
     try {
-      await createPushNotification({
+      await createNotification({
         type: 'announcement',
         title: customTitle,
         message: customMessage,
@@ -80,15 +92,15 @@ export default function NotificationTestPanel() {
           timestamp: new Date().toISOString(),
         },
       });
-      Alert.alert(t('success'), 'Custom notification triggered!');
+      Alert.alert(t('success'), 'Custom notification created!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to send custom notification');
+      Alert.alert(t('error'), 'Failed to create custom notification');
     }
   };
 
   const handleBroadcastNotification = async () => {
     try {
-      await sendBroadcastNotification({
+      await createNotification({
         type: 'announcement',
         title: 'Market Update',
         message: 'Gold showing strong bullish momentum this week!',
@@ -97,9 +109,9 @@ export default function NotificationTestPanel() {
           sentiment: 'bullish',
         },
       });
-      Alert.alert(t('success'), 'Broadcast notification sent to all users!');
+      Alert.alert(t('success'), 'Broadcast notification created!');
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to send broadcast notification');
+      Alert.alert(t('error'), 'Failed to create broadcast notification');
     }
   };
 
@@ -110,26 +122,27 @@ export default function NotificationTestPanel() {
     }
 
     try {
-      await sendTargetedNotification(targetUserId, {
+      await createNotification({
         type: 'alert',
         title: 'Personal Alert',
         message: `This is a targeted message for user ${targetUserId}`,
+        target_user: targetUserId,
         data: {
           targeted: true,
           user_id: targetUserId,
         },
       });
-      Alert.alert(t('success'), `Targeted notification sent to user: ${targetUserId}`);
+      Alert.alert(t('success'), `Targeted notification created for user: ${targetUserId}`);
     } catch (error) {
-      Alert.alert(t('error'), 'Failed to send targeted notification');
+      Alert.alert(t('error'), 'Failed to create targeted notification');
     }
   };
 
   const testButtons = [
     {
       id: 'test',
-      title: 'Test Notification',
-      description: 'Send a basic test notification',
+      title: 'Local Test Notification',
+      description: 'Send a local notification (immediate)',
       icon: TestTube,
       color: colors.secondary,
       onPress: handleTestNotification,
@@ -137,7 +150,7 @@ export default function NotificationTestPanel() {
     {
       id: 'signal',
       title: 'Signal Alert',
-      description: 'Send a trading signal notification',
+      description: 'Create a trading signal notification',
       icon: TrendingUp,
       color: colors.success,
       onPress: handleSignalNotification,
@@ -145,7 +158,7 @@ export default function NotificationTestPanel() {
     {
       id: 'achievement',
       title: 'Achievement',
-      description: 'Send an achievement notification',
+      description: 'Create an achievement notification',
       icon: Award,
       color: colors.warning,
       onPress: handleAchievementNotification,
@@ -153,7 +166,7 @@ export default function NotificationTestPanel() {
     {
       id: 'broadcast',
       title: 'Broadcast',
-      description: 'Send notification to all users',
+      description: 'Create notification for all users',
       icon: Users,
       color: colors.secondary,
       onPress: handleBroadcastNotification,
@@ -316,8 +329,7 @@ export default function NotificationTestPanel() {
 
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
-          ✨ Notifications are automatically triggered when inserted into the database! 
-          The system uses Supabase triggers to send push notifications instantly.
+          ✨ Test different types of notifications. Database notifications will trigger automatic push notifications if FCM is configured properly.
         </Text>
       </View>
 
@@ -365,7 +377,7 @@ export default function NotificationTestPanel() {
           />
           
           <TouchableOpacity style={styles.customButton} onPress={handleCustomNotification}>
-            <Text style={styles.customButtonText}>Send Custom</Text>
+            <Text style={styles.customButtonText}>Create Custom</Text>
             <Send size={16} color={colors.background} />
           </TouchableOpacity>
         </View>
@@ -384,15 +396,14 @@ export default function NotificationTestPanel() {
           
           <TouchableOpacity style={styles.customButton} onPress={handleTargetedNotification}>
             <User size={16} color={colors.background} style={{ marginRight: 8 }} />
-            <Text style={styles.customButtonText}>Send Targeted</Text>
+            <Text style={styles.customButtonText}>Create Targeted</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.warning}>
           <AlertCircle size={16} color={colors.warning} style={styles.warningIcon} />
           <Text style={styles.warningText}>
-            Notifications are automatically sent via database triggers. Check the notification_logs table 
-            in Supabase to monitor delivery status and debug any issues.
+            Database notifications will automatically trigger push notifications if your FCM configuration is complete. Check the notification_logs table in Supabase to monitor delivery status.
           </Text>
         </View>
       </ScrollView>

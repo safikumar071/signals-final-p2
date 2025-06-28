@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Bell, BellOff, Smartphone, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { Bell, BellOff, Smartphone, CheckCircle, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   registerForPushNotifications,
   setupNotificationListeners,
   requestNotificationPermissions,
-} from '../lib/pushNotifications';
+  getCurrentDeviceId,
+  getDeviceProfile,
+  DeviceProfile,
+} from '../lib/fcm';
 
 interface PushNotificationManagerProps {
   onRegistrationComplete?: (deviceId: string | null) => void;
@@ -19,6 +22,7 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
   const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(null);
 
   useEffect(() => {
     checkRegistrationStatus();
@@ -30,11 +34,20 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
 
   const checkRegistrationStatus = async () => {
     try {
-      // For demo purposes, assume not registered initially
-      setIsRegistered(false);
-      setDeviceId(null);
+      const [id, profile] = await Promise.all([
+        getCurrentDeviceId(),
+        getDeviceProfile()
+      ]);
       
-      console.log('📊 Push notification status: not registered');
+      setDeviceId(id);
+      setDeviceProfile(profile);
+      setIsRegistered(!!profile?.fcm_token);
+      
+      console.log('📊 Push notification status:', {
+        deviceId: id.substring(0, 20) + '...',
+        hasProfile: !!profile,
+        hasFCMToken: !!profile?.fcm_token
+      });
     } catch (error) {
       console.error('❌ Error checking registration status:', error);
       setIsRegistered(false);
@@ -51,6 +64,10 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
         setIsRegistered(true);
         setDeviceId(deviceId);
         onRegistrationComplete?.(deviceId);
+        
+        // Refresh profile data
+        const profile = await getDeviceProfile();
+        setDeviceProfile(profile);
         
         Alert.alert(
           t('success'),
@@ -195,6 +212,7 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
       fontSize: fontSizes.small,
       color: colors.textSecondary,
       fontFamily: 'Inter-Regular',
+      marginBottom: 4,
     },
   });
 
@@ -225,10 +243,16 @@ export default function PushNotificationManager({ onRegistrationComplete }: Push
         </TouchableOpacity>
       )}
 
-      {deviceId && (
+      {deviceProfile && (
         <View style={styles.deviceInfo}>
           <Text style={styles.deviceText}>
-            {t('deviceId')}: {deviceId.substring(0, 20)}...
+            {t('deviceId')}: {deviceId?.substring(0, 20)}...
+          </Text>
+          <Text style={styles.deviceText}>
+            {t('deviceType')}: {deviceProfile.device_type}
+          </Text>
+          <Text style={styles.deviceText}>
+            FCM Token: {deviceProfile.fcm_token ? 'Configured' : 'Not configured'}
           </Text>
         </View>
       )}

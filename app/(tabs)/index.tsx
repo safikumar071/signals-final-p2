@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,13 +16,17 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import AssetSwitcher from '../../components/AssetSwitcher';
 import TimeframeSwitcher from '../../components/TimeframeSwitcher';
-import ConnectionStatus from '@/components/ConnectionStatus';
-import MarketOverview from '@/components/MarketOverview';
 import NotificationSheet from '@/components/NotificationSheet';
 import SetupGuide from '@/components/SetupGuide';
-import { fetchMarketData, fetchTechnicalIndicators, fetchEconomicEvents, MarketData, TechnicalIndicator, EconomicEvent } from '../../lib/database';
-import { getForexPrice } from '../../lib/forex';
-import { fetchPriceSummary } from '../../lib/database';
+import { 
+  fetchMarketData, 
+  fetchTechnicalIndicators, 
+  fetchEconomicEvents, 
+  MarketData, 
+  TechnicalIndicator, 
+  EconomicEvent,
+  fetchPriceSummary 
+} from '../../lib/database';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -58,32 +63,7 @@ export default function HomeScreen() {
   const [marketData, setMarketData] = useState<MarketData[]>([]);
   const [technicalIndicators, setTechnicalIndicators] = useState<TechnicalIndicator[]>([]);
   const [economicEvents, setEconomicEvents] = useState<EconomicEvent[]>([]);
-  const [livePrice, setLivePrice] = useState<number | null>(null);
-  const tradingViewInterval = getTradingViewInterval(timeframe);
-
-  const fetchLivePrice = async () => {
-    setPriceLoading(true);
-
-    try {
-      const data = await fetchPriceSummary(selectedAsset.toUpperCase());
-
-      if (!data) throw new Error('Price summary not available');
-
-      setCurrentData({
-        price: data.current_price,
-        change: data.change_amount,
-        change_percent: data.change_percent,
-        high: data.high_price,
-        low: data.low_price,
-        volume: data.volume ?? '-',
-      });
-    } catch (error) {
-      console.error('❌ Error fetching price summary:', error);
-    } finally {
-      setPriceLoading(false);
-    }
-  };
-
+  const [refreshing, setRefreshing] = useState(false);
   const [currentData, setCurrentData] = useState<LivePriceData>({
     price: 0,
     change: 0,
@@ -95,12 +75,16 @@ export default function HomeScreen() {
   });
   const [priceLoading, setPriceLoading] = useState(false);
 
+  const tradingViewInterval = getTradingViewInterval(timeframe);
+
   useEffect(() => {
     loadData();
   }, [selectedAsset]);
 
   const loadData = async () => {
     try {
+      setPriceLoading(true);
+      
       const [market, indicators, events] = await Promise.all([
         fetchMarketData(),
         fetchTechnicalIndicators(selectedAsset),
@@ -111,17 +95,49 @@ export default function HomeScreen() {
       setTechnicalIndicators(indicators);
       setEconomicEvents(events);
 
-      const assetData = market.find(item => item.pair === selectedAsset);
-      if (assetData) {
-        setCurrentData({
-          price: assetData.price,
-          change: assetData.change,
-          change_percent: assetData.change_percent,
-          high: assetData.high,
-          low: assetData.low,
-          volume: assetData.volume || '-',
-          updated_at: assetData.updated_at,
-        });
+      // Try to get price from price_summary first, then fallback to market_data
+      try {
+        const priceSummary = await fetchPriceSummary(selectedAsset);
+        if (priceSummary) {
+          setCurrentData({
+            price: priceSummary.current_price,
+            change: priceSummary.change_amount,
+            change_percent: priceSummary.change_percent,
+            high: priceSummary.high_price,
+            low: priceSummary.low_price,
+            volume: priceSummary.volume || '-',
+            updated_at: priceSummary.updated_at,
+          });
+        } else {
+          // Fallback to market_data
+          const assetData = market.find(item => item.pair === selectedAsset);
+          if (assetData) {
+            setCurrentData({
+              price: assetData.price,
+              change: assetData.change,
+              change_percent: assetData.change_percent,
+              high: assetData.high,
+              low: assetData.low,
+              volume: assetData.volume || '-',
+              updated_at: assetData.updated_at,
+            });
+          }
+        }
+      } catch (priceError) {
+        console.error('Error fetching price data:', priceError);
+        // Use market data as fallback
+        const assetData = market.find(item => item.pair === selectedAsset);
+        if (assetData) {
+          setCurrentData({
+            price: assetData.price,
+            change: assetData.change,
+            change_percent: assetData.change_percent,
+            high: assetData.high,
+            low: assetData.low,
+            volume: assetData.volume || '-',
+            updated_at: assetData.updated_at,
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading home screen data:', error);
@@ -130,9 +146,10 @@ export default function HomeScreen() {
     }
   };
 
-  if (livePrice) {
-    currentData.price = livePrice;
-  }
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    loadData().finally(() => setRefreshing(false));
+  }, [selectedAsset]);
 
   const getTradingViewHTML = (symbol: string, interval: string): string => {
     const formattedSymbol = symbol.replace('/', '');
@@ -276,12 +293,15 @@ export default function HomeScreen() {
       fontWeight: 'bold',
       color: colors.text,
       fontFamily: 'Inter-Bold',
+      marginBottom: 12,
+      paddingHorizontal: 20,
     },
     indicatorCard: {
       backgroundColor: colors.surface,
       borderRadius: 12,
       padding: 16,
       marginBottom: 12,
+      marginHorizontal: 20,
       borderWidth: 1,
       borderColor: colors.border,
     },
@@ -303,7 +323,74 @@ export default function HomeScreen() {
       fontSize: fontSizes.small,
       fontFamily: 'Inter-Regular',
     },
+    economicSection: {
+      paddingHorizontal: 20,
+      marginBottom: 24,
+    },
+    eventCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    eventHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    eventTime: {
+      fontSize: fontSizes.small,
+      color: colors.textSecondary,
+      fontFamily: 'Inter-Regular',
+    },
+    impactBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    impactText: {
+      fontSize: fontSizes.small,
+      fontFamily: 'Inter-SemiBold',
+      textTransform: 'uppercase',
+    },
+    eventName: {
+      fontSize: fontSizes.medium,
+      fontWeight: '600',
+      color: colors.text,
+      fontFamily: 'Inter-SemiBold',
+      marginBottom: 4,
+    },
+    eventDetails: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    eventDetail: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    eventDetailLabel: {
+      fontSize: fontSizes.small,
+      color: colors.textSecondary,
+      fontFamily: 'Inter-Regular',
+    },
+    eventDetailValue: {
+      fontSize: fontSizes.small,
+      color: colors.text,
+      fontFamily: 'Inter-Medium',
+    },
   });
+
+  const getImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'high': return colors.error;
+      case 'medium': return colors.warning;
+      case 'low': return colors.success;
+      default: return colors.textSecondary;
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -327,7 +414,18 @@ export default function HomeScreen() {
       </View>
 
       <AssetSwitcher selectedAsset={selectedAsset} onAssetChange={setSelectedAsset} />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+      >
         <View style={styles.livePriceCard}>
           <View style={styles.livePriceHeader}>
             <View>
@@ -409,31 +507,69 @@ export default function HomeScreen() {
         )}
 
         {/* Technical Indicators */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+        <Text style={styles.sectionTitle}>
+          {t('technicalIndicators')}
+        </Text>
+
+        {technicalIndicators.map((indicator) => (
+          <View key={indicator.id} style={styles.indicatorCard}>
+            <View style={styles.indicatorHeader}>
+              <Text style={styles.indicatorName}>{indicator.indicator_name}</Text>
+              <Text style={[styles.indicatorValue, { color: indicator.color }]}>
+                {indicator.value}
+              </Text>
+            </View>
+            <Text style={[styles.indicatorStatus, { color: indicator.color }]}>
+              {indicator.status}
+            </Text>
+          </View>
+        ))}
+
+        {/* Economic Events */}
+        <View style={styles.economicSection}>
           <Text style={styles.sectionTitle}>
-            {t('technicalIndicators')}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: fontSizes.medium, marginBottom: 12 }}>
-            {technicalIndicators[0]?.updated_at
-              ? t('updatedMinutesAgo', { minutes: Math.ceil((Date.now() - new Date(technicalIndicators[0].updated_at).getTime()) / 60000) })
-              : t('updatedRecently')}
+            Economic Events Today
           </Text>
 
-          <View style={{ gap: 12 }}>
-            {technicalIndicators.map((indicator) => (
-              <View key={indicator.id} style={styles.indicatorCard}>
-                <View style={styles.indicatorHeader}>
-                  <Text style={styles.indicatorName}>{indicator.indicator_name}</Text>
-                  <Text style={[styles.indicatorValue, { color: indicator.color }]}>
-                    {indicator.value}
+          {economicEvents.map((event) => (
+            <View key={event.id} style={styles.eventCard}>
+              <View style={styles.eventHeader}>
+                <Text style={styles.eventTime}>{event.time}</Text>
+                <View style={[
+                  styles.impactBadge,
+                  { backgroundColor: `${getImpactColor(event.impact)}20` }
+                ]}>
+                  <Text style={[
+                    styles.impactText,
+                    { color: getImpactColor(event.impact) }
+                  ]}>
+                    {event.impact}
                   </Text>
                 </View>
-                <Text style={[styles.indicatorStatus, { color: indicator.color }]}>
-                  {indicator.status}
-                </Text>
               </View>
-            ))}
-          </View>
+              
+              <Text style={styles.eventName}>
+                {event.currency} - {event.event_name}
+              </Text>
+              
+              <View style={styles.eventDetails}>
+                <View style={styles.eventDetail}>
+                  <Text style={styles.eventDetailLabel}>Forecast</Text>
+                  <Text style={styles.eventDetailValue}>{event.forecast}</Text>
+                </View>
+                <View style={styles.eventDetail}>
+                  <Text style={styles.eventDetailLabel}>Previous</Text>
+                  <Text style={styles.eventDetailValue}>{event.previous}</Text>
+                </View>
+                {event.actual && (
+                  <View style={styles.eventDetail}>
+                    <Text style={styles.eventDetailLabel}>Actual</Text>
+                    <Text style={styles.eventDetailValue}>{event.actual}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
         </View>
       </ScrollView>
       

@@ -65,7 +65,6 @@ export async function fetchPriceSummary(pair: string): Promise<PriceSummary | nu
   }
 }
 
-
 export function subscribeToMarketData(callback: (data: MarketData[]) => void) {
   // Initial fetch
   fetchMarketData().then(callback).catch(() => {
@@ -316,6 +315,26 @@ function getMockSetupSteps(): SetupStep[] {
       is_active: true,
       created_at: new Date().toISOString(),
     },
+    {
+      id: '2',
+      title: 'Configure Environment Variables',
+      description: 'Add your Supabase URL and anon key to your .env file',
+      action_text: 'Update .env file',
+      code_sample: 'EXPO_PUBLIC_SUPABASE_URL=your-project-url\nEXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key',
+      step_order: 2,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: '3',
+      title: 'Setup Firebase for Push Notifications',
+      description: 'Create a Firebase project and configure FCM for push notifications',
+      action_text: 'Configure Firebase',
+      code_sample: 'EXPO_PUBLIC_FIREBASE_API_KEY=your-api-key\nEXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project-id',
+      step_order: 3,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    },
   ];
 }
 
@@ -328,6 +347,28 @@ function getMockTechnicalIndicators(): TechnicalIndicator[] {
       value: '61.2',
       status: 'Neutral',
       color: '#888888',
+      timeframe: '1H',
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: '2',
+      pair: 'XAU/USD',
+      indicator_name: 'MACD',
+      value: '+0.45',
+      status: 'Buy',
+      color: '#00C897',
+      timeframe: '1H',
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: '3',
+      pair: 'XAU/USD',
+      indicator_name: 'ATR',
+      value: '12.34',
+      status: 'Normal Volatility',
+      color: '#FFA500',
       timeframe: '1H',
       updated_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
@@ -348,6 +389,17 @@ function getMockEconomicEvents(): EconomicEvent[] {
       event_date: new Date().toISOString().split('T')[0],
       created_at: new Date().toISOString(),
     },
+    {
+      id: '2',
+      time: '2:00 PM',
+      impact: 'medium',
+      currency: 'EUR',
+      event_name: 'ECB Interest Rate Decision',
+      forecast: '4.50%',
+      previous: '4.50%',
+      event_date: new Date().toISOString().split('T')[0],
+      created_at: new Date().toISOString(),
+    },
   ];
 }
 
@@ -360,6 +412,15 @@ function getMockNotifications(): NotificationData[] {
       message: 'XAU/USD BUY signal closed with +$245 profit',
       status: 'sent',
       sent_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: '2',
+      type: 'achievement',
+      title: 'Winning Streak!',
+      message: 'You achieved a 5-day winning streak',
+      status: 'sent',
+      sent_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
       created_at: new Date().toISOString(),
     },
   ];
