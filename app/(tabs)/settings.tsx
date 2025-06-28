@@ -9,18 +9,23 @@ import {
   Share,
   Platform,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, Shield, CircleHelp as HelpCircle, Settings, ChevronRight, Share2, Moon, Sun, Type, Smartphone, Database } from 'lucide-react-native';
+import { Bell, Shield, CircleHelp as HelpCircle, Settings, ChevronRight, Share2, Moon, Sun, Type, Smartphone, Database, Globe, Check, X } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import NotificationTestPanel from '../../components/NotificationTestPanel';
 import BackendMonitor from '../../components/BackendMonitor';
 import { getCurrentDeviceId, getDeviceProfile, DeviceProfile } from '../../lib/fcmManager';
 
 export default function SettingsScreen() {
   const { colors, fontSizes, theme, setTheme, fontSize, setFontSize } = useTheme();
+  const { t, currentLanguageInfo, availableLanguages, changeLanguage } = useLanguage();
   const [showNotificationTests, setShowNotificationTests] = useState(false);
   const [showBackendMonitor, setShowBackendMonitor] = useState(false);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState<DeviceProfile | null>(null);
   const [deviceId, setDeviceId] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -46,11 +51,11 @@ export default function SettingsScreen() {
       });
     } catch (error) {
       console.error('❌ Error loading device info:', error);
-      Alert.alert('Error', 'Failed to load device information');
+      Alert.alert(t('error'), t('failedToLoad'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadDeviceInfo();
@@ -67,34 +72,43 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleLanguageChange = async (languageCode: string) => {
+    try {
+      await changeLanguage(languageCode);
+      setShowLanguagePicker(false);
+    } catch (error) {
+      Alert.alert(t('error'), t('networkError'));
+    }
+  };
+
   const menuItems = [
     {
       id: 'notifications',
-      title: 'Notification Settings',
+      title: t('notificationSettings'),
       icon: Bell,
       color: colors.warning,
-      onPress: () => Alert.alert('Notifications', 'Notification settings coming soon!'),
+      onPress: () => Alert.alert(t('notifications'), t('comingSoon')),
     },
     {
       id: 'security',
-      title: 'Security & Privacy',
+      title: t('securityPrivacy'),
       icon: Shield,
       color: colors.success,
-      onPress: () => Alert.alert('Security', 'Security settings coming soon!'),
+      onPress: () => Alert.alert(t('securityPrivacy'), t('comingSoon')),
     },
     {
       id: 'share',
-      title: 'Share App',
+      title: t('shareApp'),
       icon: Share2,
       color: colors.secondary,
       onPress: handleShare,
     },
     {
       id: 'help',
-      title: 'Help & Support',
+      title: t('helpSupport'),
       icon: HelpCircle,
       color: colors.primary,
-      onPress: () => Alert.alert('Help', 'Contact support at help@tradingsignals.com'),
+      onPress: () => Alert.alert(t('helpSupport'), 'Contact support at help@tradingsignals.com'),
     },
   ];
 
@@ -242,6 +256,11 @@ export default function SettingsScreen() {
       color: colors.text,
       fontFamily: 'Inter-Medium',
     },
+    settingValue: {
+      fontSize: fontSizes.medium,
+      color: colors.textSecondary,
+      fontFamily: 'Inter-Regular',
+    },
     themeButtons: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -352,6 +371,70 @@ export default function SettingsScreen() {
       color: colors.secondary,
       fontFamily: 'Inter-SemiBold',
     },
+    modal: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: colors.background,
+      borderRadius: 16,
+      width: '90%',
+      maxHeight: '70%',
+      overflow: 'hidden',
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: fontSizes.subtitle,
+      fontWeight: 'bold',
+      color: colors.text,
+      fontFamily: 'Inter-Bold',
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    languageOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    languageFlag: {
+      fontSize: 20,
+      marginRight: 12,
+    },
+    languageInfo: {
+      flex: 1,
+    },
+    languageName: {
+      fontSize: fontSizes.medium,
+      color: colors.text,
+      fontFamily: 'Inter-Regular',
+    },
+    languageNative: {
+      fontSize: fontSizes.small,
+      color: colors.textSecondary,
+      fontFamily: 'Inter-Regular',
+      marginTop: 2,
+    },
+    languageSelected: {
+      backgroundColor: `${colors.primary}10`,
+    },
   });
 
   if (loading) {
@@ -359,7 +442,7 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -370,8 +453,8 @@ export default function SettingsScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.subtitle}>App preferences and device information</Text>
+          <Text style={styles.title}>{t('settingsTitle')}</Text>
+          <Text style={styles.subtitle}>{t('settingsSubtitle')}</Text>
         </View>
 
         {/* Device Information */}
@@ -380,36 +463,36 @@ export default function SettingsScreen() {
             <View style={styles.deviceIcon}>
               <Smartphone size={20} color={colors.primary} />
             </View>
-            <Text style={styles.deviceTitle}>Device Information</Text>
+            <Text style={styles.deviceTitle}>{t('deviceInformation')}</Text>
           </View>
           
           <View style={styles.deviceInfo}>
             <View style={styles.deviceRow}>
-              <Text style={styles.deviceLabel}>Device ID:</Text>
+              <Text style={styles.deviceLabel}>{t('deviceId')}:</Text>
               <Text style={styles.deviceValue}>
-                {deviceId ? `${deviceId.substring(0, 20)}...` : 'Loading...'}
+                {deviceId ? `${deviceId.substring(0, 20)}...` : t('loading')}
               </Text>
             </View>
             
             <View style={styles.deviceRow}>
-              <Text style={styles.deviceLabel}>Device Type:</Text>
+              <Text style={styles.deviceLabel}>{t('deviceType')}:</Text>
               <Text style={styles.deviceValue}>
                 {deviceProfile?.device_type || 'Unknown'}
               </Text>
             </View>
             
             <View style={styles.deviceRow}>
-              <Text style={styles.deviceLabel}>App Version:</Text>
+              <Text style={styles.deviceLabel}>{t('appVersion')}:</Text>
               <Text style={styles.deviceValue}>
                 {deviceProfile?.app_version || '1.0.0'}
               </Text>
             </View>
             
             <View style={styles.deviceRow}>
-              <Text style={styles.deviceLabel}>Notifications:</Text>
+              <Text style={styles.deviceLabel}>{t('notifications')}:</Text>
               <View style={styles.statusBadge}>
                 <Text style={styles.statusText}>
-                  {deviceProfile?.fcm_token ? 'Enabled' : 'Disabled'}
+                  {deviceProfile?.fcm_token ? t('enabled') : t('disabled')}
                 </Text>
               </View>
             </View>
@@ -448,12 +531,27 @@ export default function SettingsScreen() {
 
         {/* App Preferences */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={styles.sectionTitle}>{t('preferences')}</Text>
 
+          {/* Language Selection */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => setShowLanguagePicker(true)}
+          >
+            <View style={styles.settingLeft}>
+              <Globe size={20} color={colors.secondary} />
+              <Text style={styles.settingText}>{t('language')}</Text>
+            </View>
+            <Text style={styles.settingValue}>
+              {currentLanguageInfo.flag} {currentLanguageInfo.name}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Theme Selection */}
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <Moon size={20} color={colors.secondary} />
-              <Text style={styles.settingText}>Theme</Text>
+              <Text style={styles.settingText}>{t('theme')}</Text>
             </View>
             <View style={styles.themeButtons}>
               <TouchableOpacity
@@ -468,7 +566,7 @@ export default function SettingsScreen() {
                   styles.themeButtonText,
                   theme === 'light' && styles.themeButtonTextActive
                 ]}>
-                  Light
+                  {t('light')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -483,7 +581,7 @@ export default function SettingsScreen() {
                   styles.themeButtonText,
                   theme === 'dark' && styles.themeButtonTextActive
                 ]}>
-                  Dark
+                  {t('dark')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -498,16 +596,17 @@ export default function SettingsScreen() {
                   styles.themeButtonText,
                   theme === 'system' && styles.themeButtonTextActive
                 ]}>
-                  Auto
+                  {t('auto')}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* Font Size Selection */}
           <View style={styles.settingItem}>
             <View style={styles.settingLeft}>
               <Type size={20} color={colors.primary} />
-              <Text style={styles.settingText}>Font Size</Text>
+              <Text style={styles.settingText}>{t('fontSize')}</Text>
             </View>
             <View style={styles.fontSizeButtons}>
               <TouchableOpacity
@@ -558,15 +657,58 @@ export default function SettingsScreen() {
 
         {/* Menu Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>{t('account')}</Text>
           <View style={styles.menuContainer}>
             {menuItems.map(renderMenuItem)}
           </View>
         </View>
 
         {/* App Version */}
-        <Text style={styles.versionText}>Version 1.0.0</Text>
+        <Text style={styles.versionText}>{t('version', { version: '1.0.0' })}</Text>
       </ScrollView>
+
+      {/* Language Picker Modal */}
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
+        <View style={styles.modal}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('selectLanguage')}</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowLanguagePicker(false)}
+              >
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {availableLanguages.map((language) => (
+                <TouchableOpacity
+                  key={language.code}
+                  style={[
+                    styles.languageOption,
+                    currentLanguageInfo.code === language.code && styles.languageSelected
+                  ]}
+                  onPress={() => handleLanguageChange(language.code)}
+                >
+                  <Text style={styles.languageFlag}>{language.flag}</Text>
+                  <View style={styles.languageInfo}>
+                    <Text style={styles.languageName}>{language.name}</Text>
+                    <Text style={styles.languageNative}>{language.nativeName}</Text>
+                  </View>
+                  {currentLanguageInfo.code === language.code && (
+                    <Check size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

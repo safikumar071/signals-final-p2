@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { TrendingUp, Wallet, ChartBar as BarChart3, User, PhoneIncoming as HomeIcon, Calculator as CalculatorIcon, View, Settings2, Bell } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-svg';
 import { useState } from 'react';
@@ -10,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const { colors, isDark, fontSizes } = useTheme();
+  const { t } = useLanguage();
 
   return (
     <Tabs
@@ -34,7 +36,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('home'),
           tabBarIcon: ({ size, color }) => (
             <HomeIcon size={size} color={color} />
           ),
@@ -43,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="signals"
         options={{
-          title: 'Signals',
+          title: t('signals'),
           tabBarIcon: ({ size, color }) => (
             <TrendingUp size={size} color={color} />
           ),
@@ -52,7 +54,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="calculator"
         options={{
-          title: 'Calculator',
+          title: t('calculator'),
           tabBarIcon: ({ size, color }) => (
             <CalculatorIcon size={size} color={color} />
           ),
@@ -61,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('settings'),
           tabBarIcon: ({ size, color }) => (
             <Settings2 size={size} color={color} />
           ),
