@@ -9,33 +9,78 @@ export interface UserProfile {
   dob: string;
   language: string;
   onboarding_completed: boolean;
+  fcm_token?: string;
+  device_type?: 'ios' | 'android' | 'web';
+  app_version?: string;
   last_active: string;
   created_at?: string;
 }
 
+export interface OnboardingData {
+  name: string;
+  dob: string;
+  language: string;
+}
+
+// Language options matching the database constraint
+export const LANGUAGE_OPTIONS = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+];
+
 // Generate unique device ID
 export async function getDeviceId(): Promise<string> {
   try {
-    // Try to get a unique device identifier
+    // Check if we already have a stored device ID
+    const existingId = await AsyncStorage.getItem('device_id');
+    if (existingId) {
+      return existingId;
+    }
+
+    // Generate new device ID
     const deviceId = Device.osInternalBuildId || 
                     Device.deviceName || 
                     Device.modelName || 
-                    'unknown-device';
+                    `device_${Date.now()}`;
     
     // Clean and format the ID
     const cleanId = deviceId.replace(/\s+/g, '-').toLowerCase();
-    return `device_${cleanId}_${Date.now()}`;
+    const finalId = `device_${cleanId}_${Date.now()}`;
+    
+    // Store for future use
+    await AsyncStorage.setItem('device_id', finalId);
+    
+    return finalId;
   } catch (error) {
     console.error('Error getting device ID:', error);
     // Fallback to timestamp-based ID
-    return `device_fallback_${Date.now()}`;
+    const fallbackId = `device_fallback_${Date.now()}`;
+    try {
+      await AsyncStorage.setItem('device_id', fallbackId);
+    } catch (storageError) {
+      console.error('Error storing fallback device ID:', storageError);
+    }
+    return fallbackId;
   }
+}
+
+// Get current device type
+function getDeviceType(): 'ios' | 'android' | 'web' {
+  if (Device.osName === 'iOS') return 'ios';
+  if (Device.osName === 'Android') return 'android';
+  return 'web';
 }
 
 // Check if profile exists locally
 export async function checkLocalProfileExists(): Promise<boolean> {
   try {
-    const value = await AsyncStorage.getItem('user_profile_created');
+    const value = await AsyncStorage.getItem('onboarding_completed');
     return value === 'true';
   } catch (error) {
     console.error('Error checking local profile:', error);
@@ -46,7 +91,7 @@ export async function checkLocalProfileExists(): Promise<boolean> {
 // Mark profile as created locally
 export async function markProfileAsCreated(): Promise<void> {
   try {
-    await AsyncStorage.setItem('user_profile_created', 'true');
+    await AsyncStorage.setItem('onboarding_completed', 'true');
   } catch (error) {
     console.error('Error marking profile as created:', error);
   }
@@ -67,12 +112,18 @@ export async function saveUserProfile(
       dob,
       language,
       onboarding_completed: true,
+      device_type: getDeviceType(),
+      app_version: '1.0.0',
       last_active: new Date().toISOString(),
     };
 
+    console.log('Saving profile data:', profileData);
+
     const { error } = await supabase
       .from('user_profiles')
-      .upsert(profileData);
+      .upsert(profileData, {
+        onConflict: 'user_id'
+      });
 
     if (error) {
       console.error('Supabase error:', error);
@@ -82,9 +133,15 @@ export async function saveUserProfile(
     // Mark as created locally
     await markProfileAsCreated();
     
-    // Store device ID for future use
-    await AsyncStorage.setItem('device_id', deviceId);
+    // Store profile data locally for offline access
+    await AsyncStorage.setItem('user_profile', JSON.stringify({
+      name,
+      dob,
+      language,
+      device_id: deviceId,
+    }));
 
+    console.log('Profile saved successfully');
     return { success: true };
   } catch (error) {
     console.error('Error saving user profile:', error);
@@ -95,13 +152,9 @@ export async function saveUserProfile(
 // Load user profile from Supabase
 export async function loadUserProfile(): Promise<UserProfile | null> {
   try {
-    // First check if we have a stored device ID
-    let deviceId = await AsyncStorage.getItem('device_id');
+    const deviceId = await getDeviceId();
     
-    if (!deviceId) {
-      deviceId = await getDeviceId();
-      await AsyncStorage.setItem('device_id', deviceId);
-    }
+    console.log('Loading profile for device ID:', deviceId);
 
     const { data, error } = await supabase
       .from('user_profiles')
@@ -110,9 +163,39 @@ export async function loadUserProfile(): Promise<UserProfile | null> {
       .single();
 
     if (error) {
-      console.error('Error loading profile:', error);
+      console.error('Error loading profile from Supabase:', error);
+      
+      // Try to load from local storage as fallback
+      try {
+        const localProfile = await AsyncStorage.getItem('user_profile');
+        if (localProfile) {
+          const parsed = JSON.parse(localProfile);
+          console.log('Using local profile as fallback');
+          return {
+            user_id: deviceId,
+            name: parsed.name,
+            dob: parsed.dob,
+            language: parsed.language,
+            onboarding_completed: true,
+            last_active: new Date().toISOString(),
+          };
+        }
+      } catch (localError) {
+        console.error('Error loading local profile:', localError);
+      }
+      
       return null;
     }
+
+    console.log('Profile loaded from Supabase:', data);
+    
+    // Update local storage with latest data
+    await AsyncStorage.setItem('user_profile', JSON.stringify({
+      name: data.name,
+      dob: data.dob,
+      language: data.language,
+      device_id: deviceId,
+    }));
 
     return data;
   } catch (error) {
@@ -126,11 +209,9 @@ export async function updateUserProfile(
   updates: Partial<Pick<UserProfile, 'name' | 'dob' | 'language'>>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const deviceId = await AsyncStorage.getItem('device_id');
+    const deviceId = await getDeviceId();
     
-    if (!deviceId) {
-      return { success: false, error: 'Device ID not found' };
-    }
+    console.log('Updating profile for device ID:', deviceId, 'with updates:', updates);
 
     const { error } = await supabase
       .from('user_profiles')
@@ -145,6 +226,19 @@ export async function updateUserProfile(
       return { success: false, error: error.message };
     }
 
+    // Update local storage
+    try {
+      const localProfile = await AsyncStorage.getItem('user_profile');
+      if (localProfile) {
+        const parsed = JSON.parse(localProfile);
+        const updated = { ...parsed, ...updates };
+        await AsyncStorage.setItem('user_profile', JSON.stringify(updated));
+      }
+    } catch (localError) {
+      console.error('Error updating local profile:', localError);
+    }
+
+    console.log('Profile updated successfully');
     return { success: true };
   } catch (error) {
     console.error('Error updating user profile:', error);
@@ -157,25 +251,39 @@ export async function checkOnboardingStatus(): Promise<boolean> {
   try {
     // First check locally for faster response
     const localStatus = await checkLocalProfileExists();
-    if (!localStatus) return false;
+    if (!localStatus) {
+      console.log('Local onboarding status: not completed');
+      return false;
+    }
 
     // Then verify with Supabase
     const profile = await loadUserProfile();
-    return profile?.onboarding_completed || false;
+    const completed = profile?.onboarding_completed || false;
+    
+    console.log('Onboarding status check:', {
+      local: localStatus,
+      remote: completed,
+      final: completed
+    });
+    
+    return completed;
   } catch (error) {
     console.error('Error checking onboarding status:', error);
-    return false;
+    // Fallback to local check
+    return await checkLocalProfileExists();
   }
 }
 
-// Language options
-export const LANGUAGE_OPTIONS = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-];
+// Clear all profile data (for testing/reset)
+export async function clearProfileData(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([
+      'device_id',
+      'onboarding_completed', 
+      'user_profile'
+    ]);
+    console.log('Profile data cleared');
+  } catch (error) {
+    console.error('Error clearing profile data:', error);
+  }
+}

@@ -8,10 +8,12 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Calendar, User, Globe, ChevronDown, Check } from 'lucide-react-native';
+import { Calendar, User, Globe, ChevronDown, Check, X } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { saveUserProfile, LANGUAGE_OPTIONS } from '../lib/deviceProfile';
 
@@ -26,12 +28,40 @@ export default function OnboardingScreen() {
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
 
   const selectedLanguage = LANGUAGE_OPTIONS.find(lang => lang.code === formData.language);
 
-  const handleDateChange = (date: string) => {
-    setFormData(prev => ({ ...prev, dob: date }));
-    setShowDatePicker(false);
+  const validateForm = (): boolean => {
+    const newErrors: {[key: string]: string} = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    }
+
+    if (!formData.dob) {
+      newErrors.dob = 'Date of birth is required';
+    } else {
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(formData.dob)) {
+        newErrors.dob = 'Please enter date in YYYY-MM-DD format';
+      } else {
+        const date = new Date(formData.dob);
+        const today = new Date();
+        if (date > today) {
+          newErrors.dob = 'Date of birth cannot be in the future';
+        }
+        if (date < new Date('1900-01-01')) {
+          newErrors.dob = 'Please enter a valid date of birth';
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleLanguageSelect = (languageCode: string) => {
@@ -39,23 +69,13 @@ export default function OnboardingScreen() {
     setShowLanguagePicker(false);
   };
 
-  const validateForm = (): boolean => {
-    if (!formData.name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
-      return false;
-    }
-    if (!formData.dob) {
-      Alert.alert('Error', 'Please select your date of birth');
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
     try {
+      console.log('Submitting onboarding form:', formData);
+      
       const result = await saveUserProfile(
         formData.name,
         formData.dob,
@@ -63,11 +83,13 @@ export default function OnboardingScreen() {
       );
 
       if (result.success) {
+        console.log('Onboarding completed successfully');
         router.replace('/(tabs)');
       } else {
         Alert.alert('Error', result.error || 'Failed to save your profile. Please try again.');
       }
     } catch (error) {
+      console.error('Onboarding submission error:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -76,8 +98,12 @@ export default function OnboardingScreen() {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch {
+      return dateString;
+    }
   };
 
   const styles = StyleSheet.create({
@@ -131,6 +157,9 @@ export default function OnboardingScreen() {
       paddingHorizontal: 16,
       paddingVertical: 14,
     },
+    inputContainerError: {
+      borderColor: colors.error,
+    },
     inputContainerFocused: {
       borderColor: colors.primary,
     },
@@ -152,26 +181,11 @@ export default function OnboardingScreen() {
     pickerPlaceholder: {
       color: colors.textSecondary,
     },
-    languageOption: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    languageFlag: {
-      fontSize: 20,
-      marginRight: 12,
-    },
-    languageName: {
-      flex: 1,
-      fontSize: fontSizes.medium,
-      color: colors.text,
+    errorText: {
+      fontSize: fontSizes.small,
+      color: colors.error,
       fontFamily: 'Inter-Regular',
-    },
-    languageSelected: {
-      backgroundColor: `${colors.primary}10`,
+      marginTop: 4,
     },
     submitButton: {
       backgroundColor: colors.primary,
@@ -203,6 +217,9 @@ export default function OnboardingScreen() {
       overflow: 'hidden',
     },
     modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
       padding: 20,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
@@ -212,7 +229,35 @@ export default function OnboardingScreen() {
       fontWeight: 'bold',
       color: colors.text,
       fontFamily: 'Inter-Bold',
-      textAlign: 'center',
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    languageOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    languageFlag: {
+      fontSize: 20,
+      marginRight: 12,
+    },
+    languageName: {
+      flex: 1,
+      fontSize: fontSizes.medium,
+      color: colors.text,
+      fontFamily: 'Inter-Regular',
+    },
+    languageSelected: {
+      backgroundColor: `${colors.primary}10`,
     },
     dateInput: {
       width: '100%',
@@ -233,25 +278,37 @@ export default function OnboardingScreen() {
           {/* Name Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name</Text>
-            <View style={styles.inputContainer}>
+            <View style={[
+              styles.inputContainer,
+              errors.name && styles.inputContainerError
+            ]}>
               <User size={20} color={colors.textSecondary} style={styles.icon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your full name"
                 placeholderTextColor={colors.textSecondary}
                 value={formData.name}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
+                onChangeText={(text) => {
+                  setFormData(prev => ({ ...prev, name: text }));
+                  if (errors.name) {
+                    setErrors(prev => ({ ...prev, name: '' }));
+                  }
+                }}
                 autoCapitalize="words"
                 autoCorrect={false}
               />
             </View>
+            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
           </View>
 
           {/* Date of Birth */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Date of Birth</Text>
             <TouchableOpacity
-              style={styles.inputContainer}
+              style={[
+                styles.inputContainer,
+                errors.dob && styles.inputContainerError
+              ]}
               onPress={() => setShowDatePicker(true)}
             >
               <Calendar size={20} color={colors.textSecondary} style={styles.icon} />
@@ -263,6 +320,7 @@ export default function OnboardingScreen() {
               </Text>
               <ChevronDown size={20} color={colors.textSecondary} />
             </TouchableOpacity>
+            {errors.dob && <Text style={styles.errorText}>{errors.dob}</Text>}
           </View>
 
           {/* Language Selection */}
@@ -296,11 +354,22 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       {/* Date Picker Modal */}
-      {showDatePicker && (
+      <Modal
+        visible={showDatePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
         <View style={styles.modal}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Date of Birth</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
             <View style={{ padding: 20 }}>
               <TextInput
@@ -308,21 +377,37 @@ export default function OnboardingScreen() {
                 placeholder="YYYY-MM-DD"
                 placeholderTextColor={colors.textSecondary}
                 value={formData.dob}
-                onChangeText={(text) => setFormData(prev => ({ ...prev, dob: text }))}
+                onChangeText={(text) => {
+                  setFormData(prev => ({ ...prev, dob: text }));
+                  if (errors.dob) {
+                    setErrors(prev => ({ ...prev, dob: '' }));
+                  }
+                }}
                 onBlur={() => setShowDatePicker(false)}
                 autoFocus
               />
             </View>
           </View>
         </View>
-      )}
+      </Modal>
 
       {/* Language Picker Modal */}
-      {showLanguagePicker && (
+      <Modal
+        visible={showLanguagePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguagePicker(false)}
+      >
         <View style={styles.modal}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Language</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowLanguagePicker(false)}
+              >
+                <X size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
             <ScrollView>
               {LANGUAGE_OPTIONS.map((language) => (
@@ -344,7 +429,7 @@ export default function OnboardingScreen() {
             </ScrollView>
           </View>
         </View>
-      )}
+      </Modal>
     </SafeAreaView>
   );
 }

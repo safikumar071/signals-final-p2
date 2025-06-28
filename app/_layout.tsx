@@ -32,17 +32,17 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
+        console.log('🚀 App initializing...');
+        
         // Check if onboarding is completed
         const completed = await checkOnboardingStatus();
+        console.log('📋 Onboarding status:', completed);
+        
         setOnboardingCompleted(completed);
-        
-        // Simple initialization without navigation calls
-        console.log('App initializing...');
-        
-        // Just set ready state - let Stack handle navigation naturally
         setIsReady(true);
       } catch (error) {
-        console.error('Error during app initialization:', error);
+        console.error('❌ Error during app initialization:', error);
+        // Default to showing onboarding on error
         setOnboardingCompleted(false);
         setIsReady(true);
       }
@@ -58,8 +58,17 @@ export default function RootLayout() {
   // Navigate based on onboarding status
   useEffect(() => {
     if (isReady && onboardingCompleted !== null) {
+      console.log('🧭 Navigation decision:', {
+        isReady,
+        onboardingCompleted,
+        action: onboardingCompleted ? 'Main App' : 'Onboarding'
+      });
+      
       if (!onboardingCompleted) {
         router.replace('/onboarding');
+      } else {
+        // Ensure we're on the main app if onboarding is completed
+        router.replace('/(tabs)');
       }
     }
   }, [isReady, onboardingCompleted]);
