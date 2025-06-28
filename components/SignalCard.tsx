@@ -7,13 +7,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
-import {
-  Clock,
-  Target,
-  TriangleAlert as AlertTriangle,
-  CheckIcon,
-  X,
-} from 'lucide-react-native';
+import { Clock, Target, TriangleAlert as AlertTriangle, Check as CheckIcon, X } from 'lucide-react-native';
 import { Signal } from '../lib/supabase';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
