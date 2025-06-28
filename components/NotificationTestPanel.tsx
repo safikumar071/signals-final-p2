@@ -7,49 +7,32 @@ import {
   Alert,
   ScrollView,
   TextInput,
-  Pressable,
 } from 'react-native';
 import { Bell, Send, TestTube, Award, TrendingUp, CircleAlert as AlertCircle, Users, User } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
   sendTestNotification,
   sendSignalNotification,
   sendAchievementNotification,
   sendBroadcastNotification,
   sendTargetedNotification,
-  registerForPushNotifications,
   createPushNotification,
-} from '../lib/notifications';
+} from '../lib/pushNotifications';
 
 export default function NotificationTestPanel() {
   const { colors, fontSizes } = useTheme();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const { t } = useLanguage();
   const [customTitle, setCustomTitle] = useState('Custom Test Notification');
   const [customMessage, setCustomMessage] = useState('This is a custom test message');
   const [targetUserId, setTargetUserId] = useState('');
 
-  const handleRegisterDevice = async () => {
-    setIsRegistering(true);
-    try {
-      const deviceId = await registerForPushNotifications();
-      if (deviceId) {
-        Alert.alert('Success', `Device registered with ID: ${deviceId.substring(0, 8)}...`);
-      } else {
-        Alert.alert('Error', 'Failed to register device for notifications');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to register device');
-    } finally {
-      setIsRegistering(false);
-    }
-  };
-
   const handleTestNotification = async () => {
     try {
       await sendTestNotification();
-      Alert.alert('Success', 'Test notification triggered! Check your device.');
+      Alert.alert(t('success'), 'Test notification triggered! Check your device.');
     } catch (error) {
-      Alert.alert('Error', 'Failed to send test notification');
+      Alert.alert(t('error'), 'Failed to send test notification');
     }
   };
 
@@ -62,9 +45,9 @@ export default function NotificationTestPanel() {
         entry_price: 2345.67,
         status: 'active',
       });
-      Alert.alert('Success', 'Signal notification triggered!');
+      Alert.alert(t('success'), 'Signal notification triggered!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to send signal notification');
+      Alert.alert(t('error'), 'Failed to send signal notification');
     }
   };
 
@@ -75,15 +58,15 @@ export default function NotificationTestPanel() {
         description: 'You\'ve achieved a 5-day winning streak!',
         type: 'streak',
       });
-      Alert.alert('Success', 'Achievement notification triggered!');
+      Alert.alert(t('success'), 'Achievement notification triggered!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to send achievement notification');
+      Alert.alert(t('error'), 'Failed to send achievement notification');
     }
   };
 
   const handleCustomNotification = async () => {
     if (!customTitle.trim() || !customMessage.trim()) {
-      Alert.alert('Error', 'Please enter both title and message');
+      Alert.alert(t('error'), 'Please enter both title and message');
       return;
     }
 
@@ -97,9 +80,9 @@ export default function NotificationTestPanel() {
           timestamp: new Date().toISOString(),
         },
       });
-      Alert.alert('Success', 'Custom notification triggered!');
+      Alert.alert(t('success'), 'Custom notification triggered!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to send custom notification');
+      Alert.alert(t('error'), 'Failed to send custom notification');
     }
   };
 
@@ -114,15 +97,15 @@ export default function NotificationTestPanel() {
           sentiment: 'bullish',
         },
       });
-      Alert.alert('Success', 'Broadcast notification sent to all users!');
+      Alert.alert(t('success'), 'Broadcast notification sent to all users!');
     } catch (error) {
-      Alert.alert('Error', 'Failed to send broadcast notification');
+      Alert.alert(t('error'), 'Failed to send broadcast notification');
     }
   };
 
   const handleTargetedNotification = async () => {
     if (!targetUserId.trim()) {
-      Alert.alert('Error', 'Please enter a target user ID');
+      Alert.alert(t('error'), 'Please enter a target user ID');
       return;
     }
 
@@ -136,22 +119,13 @@ export default function NotificationTestPanel() {
           user_id: targetUserId,
         },
       });
-      Alert.alert('Success', `Targeted notification sent to user: ${targetUserId}`);
+      Alert.alert(t('success'), `Targeted notification sent to user: ${targetUserId}`);
     } catch (error) {
-      Alert.alert('Error', 'Failed to send targeted notification');
+      Alert.alert(t('error'), 'Failed to send targeted notification');
     }
   };
 
   const testButtons = [
-    {
-      id: 'register',
-      title: 'Register Device',
-      description: 'Register this device for push notifications',
-      icon: Bell,
-      color: colors.primary,
-      onPress: handleRegisterDevice,
-      loading: isRegistering,
-    },
     {
       id: 'test',
       title: 'Test Notification',
@@ -230,9 +204,6 @@ export default function NotificationTestPanel() {
       marginBottom: 12,
       borderWidth: 1,
       borderColor: colors.border,
-    },
-    testButtonDisabled: {
-      opacity: 0.6,
     },
     testButtonIcon: {
       width: 40,
@@ -339,13 +310,13 @@ export default function NotificationTestPanel() {
         </View>
         <View>
           <Text style={styles.title}>Notification Testing</Text>
-          <Text style={styles.subtitle}>Test automatic push notification system</Text>
+          <Text style={styles.subtitle}>Test push notification system</Text>
         </View>
       </View>
 
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
-          ✨ New: Notifications are now automatically triggered when inserted into the database! 
+          ✨ Notifications are automatically triggered when inserted into the database! 
           The system uses Supabase triggers to send push notifications instantly.
         </Text>
       </View>
@@ -354,12 +325,8 @@ export default function NotificationTestPanel() {
         {testButtons.map((button) => (
           <TouchableOpacity
             key={button.id}
-            style={[
-              styles.testButton,
-              button.loading && styles.testButtonDisabled,
-            ]}
+            style={styles.testButton}
             onPress={button.onPress}
-            disabled={button.loading}
           >
             <View style={[
               styles.testButtonIcon,
@@ -368,12 +335,8 @@ export default function NotificationTestPanel() {
               <button.icon size={20} color={button.color} />
             </View>
             <View style={styles.testButtonContent}>
-              <Text style={styles.testButtonTitle}>
-                {button.loading ? 'Processing...' : button.title}
-              </Text>
-              <Text style={styles.testButtonDescription}>
-                {button.description}
-              </Text>
+              <Text style={styles.testButtonTitle}>{button.title}</Text>
+              <Text style={styles.testButtonDescription}>{button.description}</Text>
             </View>
             <Send size={16} color={colors.textSecondary} style={styles.sendIcon} />
           </TouchableOpacity>

@@ -14,6 +14,7 @@ export default {
   close: 'Close',
   retry: 'Retry',
   refresh: 'Refresh',
+  ok: 'OK',
   
   // Home Screen
   homeTitle: 'Gold & Silver Signals',
@@ -78,6 +79,19 @@ export default {
   notifications: 'Notifications',
   enabled: 'Enabled',
   disabled: 'Disabled',
+  
+  // Push Notifications
+  notificationsEnabled: 'Notifications Enabled',
+  notificationsDisabled: 'Notifications Disabled',
+  deviceRegistered: 'Device registered for push notifications',
+  enableNotificationsMessage: 'Enable notifications to receive trading alerts',
+  enableNotifications: 'Enable Notifications',
+  checkingStatus: 'Checking Status',
+  pleaseWait: 'Please wait...',
+  registering: 'Registering...',
+  notificationRegistrationFailed: 'Failed to register for notifications',
+  permissionRequired: 'Permission Required',
+  notificationPermissionMessage: 'Please enable notifications in your device settings to receive trading alerts.',
   
   // Preferences
   preferences: 'Preferences',

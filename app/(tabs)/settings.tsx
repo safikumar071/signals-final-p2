@@ -18,6 +18,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import NotificationTestPanel from '../../components/NotificationTestPanel';
 import BackendMonitor from '../../components/BackendMonitor';
+import PushNotificationManager from '../../components/PushNotificationManager';
 import { getCurrentDeviceId, getDeviceProfile, DeviceProfile } from '../../lib/fcmManager';
 
 export default function SettingsScreen() {
@@ -78,6 +79,13 @@ export default function SettingsScreen() {
       setShowLanguagePicker(false);
     } catch (error) {
       Alert.alert(t('error'), t('networkError'));
+    }
+  };
+
+  const handleNotificationRegistration = (deviceId: string | null) => {
+    if (deviceId) {
+      // Refresh device info after successful registration
+      loadDeviceInfo();
     }
   };
 
@@ -456,6 +464,9 @@ export default function SettingsScreen() {
           <Text style={styles.title}>{t('settingsTitle')}</Text>
           <Text style={styles.subtitle}>{t('settingsSubtitle')}</Text>
         </View>
+
+        {/* Push Notification Manager */}
+        <PushNotificationManager onRegistrationComplete={handleNotificationRegistration} />
 
         {/* Device Information */}
         <View style={styles.deviceCard}>
